@@ -2,7 +2,8 @@
  *	GoToFile
 
  *	Copyright (C) 2009-2012 Ryan Gregg
- *
+  *	Copyright (C) 2019 Galen Elias
+*
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
  *	the Free Software Foundation, either version 3 of the License, or
@@ -20,31 +21,31 @@
 #include "stdafx.h"
 #include "GoToFileDlg.h"
 
-//namespace
-//{
-//	static int CALLBACK BrowseCallback(HWND hwnd,UINT uMsg, LPARAM lParam, LPARAM lpData)
-//	{
-//		COpenNowSettings* pSettings = reinterpret_cast<COpenNowSettings*>(lpData);
-//		switch(uMsg) 
-//		{
-//		case BFFM_INITIALIZED:
-//			if(!pSettings->GetBrowsePath().empty())
-//			{
-//				SendMessage(hwnd, BFFM_SETSELECTION, TRUE, reinterpret_cast<LPARAM>(pSettings->GetBrowsePath().c_str()));
-//			}
-//			break;
-//		}
-//		return 0;
-//	}
-//}
+namespace
+{
+	static int CALLBACK BrowseCallback(HWND hwnd,UINT uMsg, LPARAM lParam, LPARAM lpData)
+	{
+		GoToFileSettings* pSettings = reinterpret_cast<GoToFileSettings*>(lpData);
+		switch(uMsg)
+		{
+		case BFFM_INITIALIZED:
+			if (!pSettings->GetBrowsePath().empty())
+			{
+				SendMessage(hwnd, BFFM_SETSELECTION, TRUE, reinterpret_cast<LPARAM>(pSettings->GetBrowsePath().c_str()));
+			}
+			break;
+		}
+		return 0;
+	}
+}
 
 int CGoToFileDlg::lpSortColumns[CGoToFileDlg::iMaxColumns] = { 0, 1, 2, 3 };
 bool CGoToFileDlg::bSortDescending = false;
 
 CGoToFileDlg::CGoToFileDlg(const CComPtr<VxDTE::_DTE>& spDTE)
-	: bInitializing(true)
-	, Settings(*this)
-	, iInitialSize(0)
+	: m_bInitializing(true)
+	, m_settings(*this)
+	, m_iInitialSize(0)
 	, m_spDTE(spDTE)
 {
 	CreateFileList();
@@ -53,26 +54,26 @@ CGoToFileDlg::CGoToFileDlg(const CComPtr<VxDTE::_DTE>& spDTE)
 HICON CGoToFileDlg::LoadIcon(int iID, int iWidth, int iHeight)
 {
 	HINSTANCE hResourceInstance = _AtlBaseModule.GetResourceInstance();
-	if(hResourceInstance)
+	if (hResourceInstance)
 	{
 		HRSRC hResource = FindResource(hResourceInstance, MAKEINTRESOURCE(iID), RT_GROUP_ICON);
-		if(hResource)
+		if (hResource)
 		{
 			HGLOBAL hLoadedResource = LoadResource(hResourceInstance, hResource);
-			if(hLoadedResource)
+			if (hLoadedResource)
 			{
 				LPVOID lpLockedResource = LockResource(hLoadedResource);
-				if(lpLockedResource)
+				if (lpLockedResource)
 				{
 					int iIconID = LookupIconIdFromDirectoryEx(static_cast<PBYTE>(lpLockedResource), TRUE, iWidth, iHeight, LR_DEFAULTCOLOR);
 					HRSRC hIconResource = FindResource(hResourceInstance, MAKEINTRESOURCE(iIconID), RT_ICON);
-					if(hIconResource)
+					if (hIconResource)
 					{
 						HGLOBAL hLoadedIconResource = LoadResource(hResourceInstance, hIconResource);
-						if(hLoadedIconResource)
+						if (hLoadedIconResource)
 						{
 							LPVOID lpLockedIconResource = LockResource(hLoadedIconResource);
-							if(lpLockedIconResource)
+							if (lpLockedIconResource)
 							{
 								DWORD dwSize = SizeofResource(hResourceInstance, hIconResource);
 								return CreateIconFromResourceEx(static_cast<PBYTE>(lpLockedIconResource), dwSize, TRUE, 0x00030000, iWidth, iHeight, LR_DEFAULTCOLOR);
@@ -83,30 +84,41 @@ HICON CGoToFileDlg::LoadIcon(int iID, int iWidth, int iHeight)
 			}
 		}
 	}
-	return NULL;
+	return nullptr;
 }
+
+static WCHAR s_isProjectItemKindPhysicalFileInitialized = false;
+static WCHAR s_lpProjectItemKindPhysicalFile[MAX_PATH + 1];
 
 void CGoToFileDlg::CreateFileList()
 {
 	DestroyFileList();
 
-	CComPtr<VxDTE::_Solution> pSolution;
-	if(SUCCEEDED(m_spDTE->get_Solution(reinterpret_cast<VxDTE::Solution**>(&pSolution))) && pSolution)
+	// Get a wide string version of vsProjectItemKindPhysicalFile, but only do the conversion once
+	if (!s_isProjectItemKindPhysicalFileInitialized)
 	{
-		SName< std::list<LPWSTR> > ProjectPath(ProjectPaths, NULL);
+		MultiByteToWideChar(CP_ACP, 0, VxDTE::vsProjectItemKindPhysicalFile, -1, s_lpProjectItemKindPhysicalFile, MAX_PATH + 1);
+		s_lpProjectItemKindPhysicalFile[MAX_PATH] = '\0';
+		s_isProjectItemKindPhysicalFileInitialized = true;
+	}
 
-		CComPtr<VxDTE::Projects> pProjects;
-		if(SUCCEEDED(pSolution->get_Projects(&pProjects)) && pProjects)
+	CComPtr<VxDTE::_Solution> spSolution;
+	if (SUCCEEDED(m_spDTE->get_Solution(reinterpret_cast<VxDTE::Solution**>(&spSolution))) && spSolution)
+	{
+		SName< std::list<LPWSTR> > ProjectPath(m_projectPaths, nullptr);
+
+		CComPtr<VxDTE::Projects> spProjects;
+		if (SUCCEEDED(spSolution->get_Projects(&spProjects)) && spProjects)
 		{
 			LONG lCount = 0;
-			if(SUCCEEDED(pProjects->get_Count(&lCount)))
+			if (SUCCEEDED(spProjects->get_Count(&lCount)))
 			{
-				for(LONG i = 1; i <= lCount; i++)
+				for (LONG i = 1; i <= lCount; i++)
 				{
-					CComPtr<VxDTE::Project> pProject;
-					if(SUCCEEDED(pProjects->Item(CComVariant(i), &pProject)) && pProject)
+					CComPtr<VxDTE::Project> spProject;
+					if (SUCCEEDED(spProjects->Item(CComVariant(i), &spProject)) && spProject)
 					{
-						CreateFileList(ProjectPath, pProject);
+						CreateFileList(ProjectPath, spProject);
 					}
 				}
 			}
@@ -114,67 +126,64 @@ void CGoToFileDlg::CreateFileList()
 	}
 }
 
-void CGoToFileDlg::CreateFileList(SName< std::list<LPWSTR> >& ParentProjectPath, CComPtr<VxDTE::Project> pProject)
+void CGoToFileDlg::CreateFileList(SName< std::list<LPWSTR> >& ParentProjectPath, VxDTE::Project* pProject)
 {
-	BSTR lpProjectName = NULL;
-	if(SUCCEEDED(pProject->get_Name(&lpProjectName)) && lpProjectName)
+	CComBSTR projectName = nullptr;
+
+	if (SUCCEEDED(pProject->get_Name(&projectName)) && projectName)
 	{
-		CComPtr<VxDTE::ProjectItems> pProjectItems;
-		if(SUCCEEDED(pProject->get_ProjectItems(&pProjectItems)) && pProjectItems)
+		CComPtr<VxDTE::ProjectItems> spProjectItems;
+		if (SUCCEEDED(pProject->get_ProjectItems(&spProjectItems)) && spProjectItems)
 		{
-			SName< std::vector<LPWSTR> > ProjectName(ProjectNames, lpProjectName);
-			SName< std::list<LPWSTR> > ProjectPath(ParentProjectPath, lpProjectName);
-			CreateFileList(ProjectName, ProjectPath, pProjectItems);
+			SName< std::vector<LPWSTR> > ProjectName(m_projectNames, projectName);
+			SName< std::list<LPWSTR> > ProjectPath(ParentProjectPath, projectName);
+			CreateFileList(ProjectName, ProjectPath, spProjectItems);
 		}
 	}
 }
 
-void CGoToFileDlg::CreateFileList(SName< std::vector<LPWSTR> >& ProjectName, SName< std::list<LPWSTR> >& ParentProjectPath, CComPtr<VxDTE::ProjectItems> pParentProjectItems)
+void CGoToFileDlg::CreateFileList(SName< std::vector<LPWSTR> >& ProjectName, SName< std::list<LPWSTR> >& ParentProjectPath, VxDTE::ProjectItems* pParentProjectItems)
 {
 	LONG lCount = 0;
-	if(SUCCEEDED(pParentProjectItems->get_Count(&lCount)))
+	if (SUCCEEDED(pParentProjectItems->get_Count(&lCount)))
 	{
-		for(LONG i = 1; i <= lCount; i++)
+		for (LONG i = 1; i <= lCount; i++)
 		{
-			CComPtr<VxDTE::ProjectItem> pProjectItem;
-			if(SUCCEEDED(pParentProjectItems->Item(CComVariant(i), &pProjectItem)) && pProjectItem)
+			CComPtr<VxDTE::ProjectItem> spProjectItem;
+			if (SUCCEEDED(pParentProjectItems->Item(CComVariant(i), &spProjectItem)) && spProjectItem)
 			{
-				BSTR lpKind = NULL;
-				if(SUCCEEDED(pProjectItem->get_Kind(&lpKind)) && lpKind)
+				CComBSTR spKind = nullptr;
+				if (SUCCEEDED(spProjectItem->get_Kind(&spKind)) && spKind)
 				{
-					WCHAR lpProjectItemKindPhysicalFile[MAX_PATH + 1];
-					MultiByteToWideChar(CP_ACP, 0, VxDTE::vsProjectItemKindPhysicalFile, -1, lpProjectItemKindPhysicalFile, MAX_PATH + 1);
-					lpProjectItemKindPhysicalFile[MAX_PATH] = '\0';
-
-					if(_wcsicmp(lpKind, lpProjectItemKindPhysicalFile) == 0)
+					if (_wcsicmp(spKind, s_lpProjectItemKindPhysicalFile) == 0)
 					{
-						BSTR lpFilePath = NULL;
-						if(SUCCEEDED(pProjectItem->get_FileNames(0, &lpFilePath)) && lpFilePath)
+						CComBSTR spFilePath = nullptr;
+						if (SUCCEEDED(spProjectItem->get_FileNames(0, &spFilePath)) && spFilePath)
 						{
-							const size_t cchFilePath = wcslen(lpFilePath) + 1;
+							const size_t cchFilePath = wcslen(spFilePath) + 1;
 							LPWSTR lpFilePathCopy = new WCHAR[cchFilePath];
-							wcscpy_s(lpFilePathCopy, cchFilePath, lpFilePath);
-							Files.push_back(SFile(lpFilePathCopy, ProjectName.GetName(), ParentProjectPath.GetName()));
+							wcscpy_s(lpFilePathCopy, cchFilePath, spFilePath);
+							m_files.push_back(SFile(lpFilePathCopy, ProjectName.GetName(), ParentProjectPath.GetName()));
 						}
 					}
 					else
 					{
-						CComPtr<VxDTE::ProjectItems> pProjectItems;
-						if(SUCCEEDED(pProjectItem->get_ProjectItems(&pProjectItems)) && pProjectItems)
+						CComPtr<VxDTE::ProjectItems> spProjectItems;
+						if (SUCCEEDED(spProjectItem->get_ProjectItems(&spProjectItems)) && spProjectItems)
 						{
-							BSTR lpFolderName = NULL;
-							if(SUCCEEDED(pProjectItem->get_Name(&lpFolderName)) && lpFolderName)
+							CComBSTR spFolderName = nullptr;
+							if (SUCCEEDED(spProjectItem->get_Name(&spFolderName)) && spFolderName)
 							{
-								SName< std::list<LPWSTR> > ProjectPath(ParentProjectPath, lpFolderName);
-								CreateFileList(ProjectName, ProjectPath, pProjectItems);
+								SName< std::list<LPWSTR> > ProjectPath(ParentProjectPath, spFolderName);
+								CreateFileList(ProjectName, ProjectPath, spProjectItems);
 							}
 						}
 						else
 						{
-							CComPtr<VxDTE::Project> pProject;
-							if(SUCCEEDED(pProjectItem->get_SubProject(&pProject)) && pProject)
+							CComPtr<VxDTE::Project> spProject;
+							if (SUCCEEDED(spProjectItem->get_SubProject(&spProject)) && spProject)
 							{
-								CreateFileList(ParentProjectPath, pProject);
+								CreateFileList(ParentProjectPath, spProject);
 							}
 						}
 					}
@@ -186,102 +195,97 @@ void CGoToFileDlg::CreateFileList(SName< std::vector<LPWSTR> >& ProjectName, SNa
 
 void CGoToFileDlg::DestroyFileList()
 {
-	for(std::vector<LPWSTR>::iterator i = ProjectNames.begin(); i != ProjectNames.end(); ++i)
+	for (std::vector<LPWSTR>::iterator i = m_projectNames.begin(); i != m_projectNames.end(); ++i)
 	{
 		delete []*i;
 	}
-	ProjectNames.clear();
+	m_projectNames.clear();
 
-	for(std::list<LPWSTR>::iterator i = ProjectPaths.begin(); i != ProjectPaths.end(); ++i)
+	for (std::list<LPWSTR>::iterator i = m_projectPaths.begin(); i != m_projectPaths.end(); ++i)
 	{
 		delete []*i;
 	}
-	ProjectPaths.clear();
+	m_projectPaths.clear();
 
-	for(std::list<SFile>::iterator i = Files.begin(); i != Files.end(); ++i)
+	for (std::list<SFile>::iterator i = m_files.begin(); i != m_files.end(); ++i)
 	{
 		delete [](*i).lpFilePath;
 	}
-	Files.clear();
+	m_files.clear();
 }
 
 void CGoToFileDlg::CreateBrowseFileList()
 {
-	//DestroyBrowseFileList();
+	DestroyBrowseFileList();
 
-	//BROWSEINFO BrowseInfo;
-	//ZeroMemory(&BrowseInfo, sizeof(BROWSEINFO));
-	//BrowseInfo.hwndOwner = m_hWnd;
-	//BrowseInfo.lParam = reinterpret_cast<LPARAM>(&Settings);
-	//BrowseInfo.lpfn = BrowseCallback;
-	//BrowseInfo.lpszTitle = L"Select a folder to browse:";
-	//BrowseInfo.ulFlags = BIF_NEWDIALOGSTYLE | BIF_NONEWFOLDERBUTTON;
+	BROWSEINFO BrowseInfo;
+	ZeroMemory(&BrowseInfo, sizeof(BROWSEINFO));
+	BrowseInfo.hwndOwner = m_hWnd;
+	BrowseInfo.lParam = reinterpret_cast<LPARAM>(&m_settings);
+	BrowseInfo.lpfn = BrowseCallback;
+	BrowseInfo.lpszTitle = L"Select a folder to browse:";
+	BrowseInfo.ulFlags = BIF_NEWDIALOGSTYLE | BIF_NONEWFOLDERBUTTON;
 
-	//LPITEMIDLIST pFolder = SHBrowseForFolder(&BrowseInfo);
-	//WCHAR lpPath[MAX_PATH];
-	//if(pFolder != NULL && SHGetPathFromIDList(pFolder, lpPath))
-	//{
-	//	Settings.SetBrowsePath(lpPath);
-	//	CreateBrowseFileList(lpPath);
-	//}
+	LPITEMIDLIST pFolder = SHBrowseForFolder(&BrowseInfo);
+	WCHAR lpPath[MAX_PATH];
+	if (pFolder != nullptr && SHGetPathFromIDList(pFolder, lpPath))
+	{
+		m_settings.SetBrowsePath(lpPath);
+		CreateBrowseFileList(lpPath);
+	}
 }
 
 void CGoToFileDlg::CreateBrowseFileList(LPCWSTR lpPath)
 {
-	const size_t cchSearch = wcslen(lpPath) + 2 + 1;
-	LPWSTR lpSearch = new WCHAR[cchSearch];
-	wcscpy_s(lpSearch, cchSearch, lpPath);
-	wcscat_s(lpSearch, cchSearch, L"\\*");
+	std::wstring wstSearch = std::wstring(lpPath) + L"\\*";
 
 	WIN32_FIND_DATA FindData;
-	HANDLE hFindFile = FindFirstFile(lpSearch, &FindData);
-	if(hFindFile != INVALID_HANDLE_VALUE)
+	HANDLE hFindFile = FindFirstFile(wstSearch.c_str(), &FindData);
+	if (hFindFile != INVALID_HANDLE_VALUE)
 	{
 		do
 		{
-			if((FindData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) == 0)
+			if ((FindData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) == 0)
 			{
 				bool bIgnore = true;
-				for(LPCWSTR i = FindData.cFileName; *i != L'\0'; i++)
+				for (LPCWSTR i = FindData.cFileName; *i != L'\0'; i++)
 				{
-					if(*i != L'.')
+					if (*i != L'.')
 					{
 						bIgnore = false;
 						break;
 					}
 				}
-				if(!bIgnore)
+				if (!bIgnore)
 				{
 					const size_t cchFileName = wcslen(lpPath) + 1 + wcslen(FindData.cFileName) + 1;
 					LPWSTR lpFileName = new WCHAR[cchFileName];
 					wcscpy_s(lpFileName, cchFileName, lpPath);
 					wcscat_s(lpFileName, cchFileName, L"\\");
 					wcscat_s(lpFileName, cchFileName, FindData.cFileName);
-					if((FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
+					if ((FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
 					{
 						CreateBrowseFileList(lpFileName);
 						delete []lpFileName;
 					}
 					else
 					{
-						BrowseFiles.push_back(SFile(lpFileName, L"<Browse>", lpFileName));
+						m_browseFiles.push_back(SFile(lpFileName, L"<Browse>", lpFileName));
 					}
 				}
 			}
-		} while(FindNextFile(hFindFile, &FindData));
+		} while (FindNextFile(hFindFile, &FindData));
 		FindClose(hFindFile);
 	}
-
-	delete []lpSearch;
 }
 
 void CGoToFileDlg::DestroyBrowseFileList()
 {
-	for(std::list<SFile>::iterator i = BrowseFiles.begin(); i != BrowseFiles.end(); ++i)
+	for (std::list<SFile>::iterator i = m_browseFiles.begin(); i != m_browseFiles.end(); ++i)
 	{
 		delete [](*i).lpFilePath;
 	}
-	BrowseFiles.clear();
+	m_browseFiles.clear();
 }
 
 LPCWSTR CGoToFileDlg::GetKnownFilterName(EKnownFilter eKnownFilter) const
@@ -291,20 +295,20 @@ LPCWSTR CGoToFileDlg::GetKnownFilterName(EKnownFilter eKnownFilter) const
 		L"<All Projects>",
 		L"<Browse...>",
 	};
-	if(eKnownFilter >= 0 && eKnownFilter < KNOWN_FILTER_COUNT)
+	if (eKnownFilter >= 0 && eKnownFilter < KNOWN_FILTER_COUNT)
 	{
 		return lpKnownFilterNames[eKnownFilter];
 	}
-	return NULL;
+	return nullptr;
 }
 
 unsigned int CGoToFileDlg::GetSelectedProject()
 {
 	HWND hProjects = GetDlgItem(IDC_PROJECTS);
-	if(hProjects)
+	if (hProjects)
 	{
 		LRESULT iItem = ::SendMessage(hProjects, CB_GETCURSEL, 0, 0);
-		if(iItem > 0)
+		if (iItem > 0)
 		{
 			return static_cast<unsigned int>(iItem);
 		}
@@ -312,20 +316,20 @@ unsigned int CGoToFileDlg::GetSelectedProject()
 	return 0;
 }
 
-int CGoToFileDlg::CompareProjects(const void *pProject1, const void *pProject2)
+static bool CompareProjects(LPCWSTR pProject1, LPCWSTR pProject2)
 {
-	return _wcsicmp(*static_cast<const LPCWSTR*>(pProject1), *static_cast<const LPCWSTR*>(pProject2));
+	return _wcsicmp(pProject1, pProject2) < 0;
 }
 
 void CGoToFileDlg::RefreshProjectList()
 {
-	if(ProjectNames.size() > 1)
+	if (m_projectNames.size() > 1)
 	{
-		qsort(&ProjectNames.front(), ProjectNames.size(), sizeof(LPWSTR), &CGoToFileDlg::CompareProjects);
+		std::sort(m_projectNames.begin(), m_projectNames.end(), &CompareProjects);
 	}
 
 	HWND hProjects = GetDlgItem(IDC_PROJECTS);
-	if(!hProjects)
+	if (!hProjects)
 	{
 		return;
 	}
@@ -347,7 +351,8 @@ void CGoToFileDlg::RefreshProjectList()
 
 	Item.pszText = LPSTR_TEXTCALLBACK;
 	Item.cchTextMax = 0;
-	for(std::vector<LPWSTR>::iterator i = ProjectNames.begin(); i != ProjectNames.end(); ++i)
+
+	for (size_t i = 0; i < m_projectNames.size(); ++i)
 	{
 		Item.iItem++;
 		::SendMessage(hProjects, CBEM_INSERTITEM, 0, reinterpret_cast<LPARAM>(&Item));
@@ -369,115 +374,115 @@ void CGoToFileDlg::RefreshProjectList()
 	::SendMessage(hProjects, CB_SETCURSEL, 0, 0);
 }
 
-int CGoToFileDlg::CompareFiles(const void *pFile1, const void *pFile2)
+bool CGoToFileDlg::CompareFiles(const SFilteredFile& file1, const SFilteredFile& file2)
 {
 	int iResult = 0;
 
-	for(int i = 0; i < iMaxColumns && iResult == 0; i++)
+	for (int i = 0; i < iMaxColumns && iResult == 0; i++)
 	{
 		switch(CGoToFileDlg::lpSortColumns[i])
 		{
 		case 0:
-			iResult = _wcsicmp(static_cast<const SFilteredFile*>(pFile1)->pFile->lpFilePath + static_cast<const SFilteredFile*>(pFile1)->pFile->uiFileName, static_cast<const SFilteredFile*>(pFile2)->pFile->lpFilePath + static_cast<const SFilteredFile*>(pFile2)->pFile->uiFileName);
+			iResult = _wcsicmp(file1.pFile->lpFilePath + file1.pFile->uiFileName, file2.pFile->lpFilePath + file2.pFile->uiFileName);
 			break;
 		case 1:
-			iResult = _wcsicmp(static_cast<const SFilteredFile*>(pFile1)->pFile->lpFilePath, static_cast<const SFilteredFile*>(pFile2)->pFile->lpFilePath);
+			iResult = _wcsicmp(file1.pFile->lpFilePath, file2.pFile->lpFilePath);
 			break;
 		case 2:
-			iResult = _wcsicmp(static_cast<const SFilteredFile*>(pFile1)->pFile->lpProjectName, static_cast<const SFilteredFile*>(pFile2)->pFile->lpProjectName);
+			iResult = _wcsicmp(file1.pFile->lpProjectName, file2.pFile->lpProjectName);
 			break;
 		case 3:
-			iResult = _wcsicmp(static_cast<const SFilteredFile*>(pFile1)->pFile->lpProjectPath, static_cast<const SFilteredFile*>(pFile2)->pFile->lpProjectPath);
+			iResult = _wcsicmp(file1.pFile->lpProjectPath, file2.pFile->lpProjectPath);
 			break;
 		}
 	}
 
-	if(CGoToFileDlg::bSortDescending)
+	if (CGoToFileDlg::bSortDescending)
 	{
 		iResult = -iResult;
 	}
 
-	return iResult;
+	return iResult < 0;
 }
 
 void CGoToFileDlg::SortFileList()
 {
-	if(FilteredFiles.size() > 1)
+	if (m_filteredFiles.size() > 1)
 	{
-		qsort(&FilteredFiles.front(), FilteredFiles.size(), sizeof(SFilteredFile), &CGoToFileDlg::CompareFiles);
+		std::sort(m_filteredFiles.begin(), m_filteredFiles.end(), &CGoToFileDlg::CompareFiles);
 	}
 }
 
 void CGoToFileDlg::RefreshFileList()
 {
 	HWND hFiles = GetDlgItem(IDC_FILES);
-	if(!hFiles)
+	if (!hFiles)
 	{
 		return;
 	}
 
 	unsigned int uiProjectIndex = GetSelectedProject();
-	LPCWSTR lpProjectName = uiProjectIndex >= static_cast<unsigned int>(KNOWN_FILTER_COUNT) && uiProjectIndex < static_cast<unsigned int>(KNOWN_FILTER_COUNT) + ProjectNames.size() ? ProjectNames[uiProjectIndex - static_cast<unsigned int>(KNOWN_FILTER_COUNT)] : NULL;
-	const std::list<SFile>& FilesToFilter = uiProjectIndex == static_cast<unsigned int>(KNOWN_FILTER_BROWSE) ? BrowseFiles : Files;
+	LPCWSTR lpProjectName = uiProjectIndex >= static_cast<unsigned int>(KNOWN_FILTER_COUNT) && uiProjectIndex < static_cast<unsigned int>(KNOWN_FILTER_COUNT) + m_projectNames.size() ? m_projectNames[uiProjectIndex - static_cast<unsigned int>(KNOWN_FILTER_COUNT)] : nullptr;
+	const std::list<SFile>& FilesToFilter = uiProjectIndex == static_cast<unsigned int>(KNOWN_FILTER_BROWSE) ? m_browseFiles : m_files;
 
-	LPWSTR lpFilterStringTable = NULL;
+	LPWSTR lpFilterStringTable = nullptr;
 	std::list<SFilter> Filters;
 	CreateFilterList(lpFilterStringTable, Filters);
 
-	FilteredFiles.clear();
-	FilteredFiles.reserve(FilesToFilter.size());
+	m_filteredFiles.clear();
+	m_filteredFiles.reserve(FilesToFilter.size());
 
 	unsigned int uiHasTerms = FILTER_TERM_NONE;
-	for(std::list<SFilter>::const_iterator j = Filters.begin(); j != Filters.end(); ++j)
+	for (std::list<SFilter>::const_iterator j = Filters.begin(); j != Filters.end(); ++j)
 	{
 		uiHasTerms |= (*j).GetFilterTerm();
 	}
 
 	int iBestMatch = -1;
-	for(std::list<SFile>::const_iterator i = FilesToFilter.begin(); i != FilesToFilter.end(); ++i)
+	for (std::list<SFile>::const_iterator i = FilesToFilter.begin(); i != FilesToFilter.end(); ++i)
 	{
 		const SFile& File = *i;
 
-		if(lpProjectName != NULL && File.lpProjectName != lpProjectName)
+		if (lpProjectName != nullptr && File.lpProjectName != lpProjectName)
 		{
 			continue;
 		}
 
 		int iMatch = -1;
 		unsigned int uiMatchTerms = uiHasTerms & FILTER_TERM_AND_MASK;
-		for(std::list<SFilter>::iterator j = Filters.begin(); j != Filters.end(); ++j)
+		for (std::list<SFilter>::iterator j = Filters.begin(); j != Filters.end(); ++j)
 		{
 			const SFilter& Filter = *j;
 
 			int iTest = Filter.Match(File);
 			unsigned int uiFilterTerm = Filter.GetFilterTerm();
-			if(iTest >= 0)
+			if (iTest >= 0)
 			{
-				if(iMatch < 0 || iTest < iMatch)
+				if (iMatch < 0 || iTest < iMatch)
 				{
 					iMatch = iTest;
 				}
-				if(uiFilterTerm & FILTER_TERM_OR_MASK)
+				if (uiFilterTerm & FILTER_TERM_OR_MASK)
 				{
 					uiMatchTerms |= uiFilterTerm;
 				}
 			}
 			else
 			{
-				if(uiFilterTerm & FILTER_TERM_AND_MASK)
+				if (uiFilterTerm & FILTER_TERM_AND_MASK)
 				{
 					uiMatchTerms &= ~uiFilterTerm;
 				}
 			}
 		}
-		if(((uiHasTerms & FILTER_TERM_OR_MASK) == 0 || (uiHasTerms & FILTER_TERM_OR_MASK & uiMatchTerms) != 0) &&
+		if (((uiHasTerms & FILTER_TERM_OR_MASK) == 0 || (uiHasTerms & FILTER_TERM_OR_MASK & uiMatchTerms) != 0) &&
 			((uiHasTerms & FILTER_TERM_AND_MASK) == 0 || (uiHasTerms & FILTER_TERM_AND_MASK) == (uiMatchTerms & FILTER_TERM_AND_MASK)))
 		{
-			if(iBestMatch < 0 || (iMatch >= 0 && iMatch < iBestMatch))
+			if (iBestMatch < 0 || (iMatch >= 0 && iMatch < iBestMatch))
 			{
 				iBestMatch = iMatch;
 			}
-			FilteredFiles.push_back(SFilteredFile(&File, iMatch));
+			m_filteredFiles.push_back(SFilteredFile(&File, iMatch));
 		}
 	}
 
@@ -492,14 +497,14 @@ void CGoToFileDlg::RefreshFileList()
 	Item.mask = LVIF_TEXT;
 	Item.pszText = LPSTR_TEXTCALLBACK;
 	int iCount = ListView_GetItemCount(hFiles);
-	ListView_SetItemCountEx(hFiles, FilteredFiles.size(), 0);
-	for(std::vector<SFilteredFile>::iterator i = FilteredFiles.begin(); i != FilteredFiles.end(); ++i)
+	ListView_SetItemCountEx(hFiles, m_filteredFiles.size(), 0);
+	for (std::vector<SFilteredFile>::iterator i = m_filteredFiles.begin(); i != m_filteredFiles.end(); ++i)
 	{
 		const SFilteredFile& FilteredFile = *i;
 
 		Item.iItem = iItem++;
 
-		if(Item.iItem >= iCount)
+		if (Item.iItem >= iCount)
 		{
 			Item.iSubItem = 0;
 			ListView_SetItem(hFiles, &Item);
@@ -514,7 +519,7 @@ void CGoToFileDlg::RefreshFileList()
 			ListView_SetItem(hFiles, &Item);
 		}
 
-		if(iBestItem == -1 || FilteredFile.iMatch < iBestMatch)
+		if (iBestItem == -1 || FilteredFile.iMatch < iBestMatch)
 		{
 			iBestItem = Item.iItem;
 			iBestMatch = FilteredFile.iMatch;
@@ -524,10 +529,10 @@ void CGoToFileDlg::RefreshFileList()
 	Select(iBestItem);
 
 	const WCHAR* lpWindowCaption = L"Open File(s) in Solution";
-	if(Files.size() > 0)
+	if (m_files.size() > 0)
 	{
 		WCHAR lpWindowText[64];
-		swprintf_s(lpWindowText, 64, L"%s (%u of %u)", lpWindowCaption, FilteredFiles.size(), Files.size());
+		swprintf_s(lpWindowText, 64, L"%s (%u of %u)", lpWindowCaption, m_filteredFiles.size(), m_files.size());
 		SetWindowText(lpWindowText);
 	}
 	else
@@ -539,107 +544,79 @@ void CGoToFileDlg::RefreshFileList()
 void CGoToFileDlg::ExploreSelectedFiles()
 {
 	HWND hFiles = GetDlgItem(IDC_FILES);
-	if(!hFiles)
+	if (!hFiles)
 	{
 		return;
 	}
 
-	typedef HRESULT (WINAPI *SHOpenFolderAndSelectItemsProc)(LPITEMIDLIST pidlFolder, UINT cidl, LPITEMIDLIST *apidl, DWORD dwFlags);
-
-	static bool bInitializedShell32 = false;
-	static SHOpenFolderAndSelectItemsProc pSHOpenFolderAndSelectItems = NULL;
-	if(!bInitializedShell32)
-	{
-		bInitializedShell32 = true;
-
-		HMODULE hShell32 = GetModuleHandle(L"shell32.dll");
-		if(!hShell32)
-		{
-			return;
-		}
-
-		pSHOpenFolderAndSelectItems = reinterpret_cast<SHOpenFolderAndSelectItemsProc>(GetProcAddress(hShell32, "SHOpenFolderAndSelectItems"));
-	}
-
-	if(pSHOpenFolderAndSelectItems == NULL)
-	{
+	CComPtr<IShellFolder> spDesktop;
+	if (FAILED(SHGetDesktopFolder(&spDesktop)))
 		return;
-	}
 
-	CComPtr<IShellFolder> pDesktop;
-	if(FAILED(SHGetDesktopFolder(&pDesktop)))
-	{
-		return;
-	}
-
-	std::list<SFolderAndSelectedFiles*> FoldersAndSelectedFiles;
+	std::vector<SFolderAndSelectedFiles> foldersAndSelectedFiles;
 
 	int iItem = -1;
-	while((iItem = ListView_GetNextItem(hFiles, iItem, LVNI_SELECTED)) >= 0)
+	while ((iItem = ListView_GetNextItem(hFiles, iItem, LVNI_SELECTED)) >= 0)
 	{
-		if(iItem < static_cast<int>(FilteredFiles.size()))
+		if (iItem < static_cast<int>(m_filteredFiles.size()))
 		{
-			const SFilteredFile& FilteredFile = FilteredFiles[iItem];
+			const SFilteredFile& FilteredFile = m_filteredFiles[iItem];
 
 			bool bFound = false;
-			for(std::list<SFolderAndSelectedFiles*>::iterator i = FoldersAndSelectedFiles.begin(); i != FoldersAndSelectedFiles.end(); ++i)
+			for (SFolderAndSelectedFiles& folderAndSelectedFiles : foldersAndSelectedFiles)
 			{
-				SFolderAndSelectedFiles* pFolderAndSelectedFiles = *i;
-				if(pFolderAndSelectedFiles->Contains(*FilteredFile.pFile))
+				if (folderAndSelectedFiles.Contains(*FilteredFile.pFile))
 				{
-					pFolderAndSelectedFiles->SelectedFiles.push_back(FilteredFile.pFile);
+					folderAndSelectedFiles.SelectedFiles.push_back(FilteredFile.pFile);
 					bFound = true;
 					break;
 				}
 			}
-			if(!bFound)
+			if (!bFound)
 			{
-				FoldersAndSelectedFiles.push_back(new SFolderAndSelectedFiles(*FilteredFile.pFile));
+				foldersAndSelectedFiles.emplace_back(*FilteredFile.pFile);
 			}
 		}
 	}
 
-	for(std::list<SFolderAndSelectedFiles*>::iterator i = FoldersAndSelectedFiles.begin(); i != FoldersAndSelectedFiles.end(); ++i)
+	for (SFolderAndSelectedFiles& folderAndSelectedFiles : foldersAndSelectedFiles)
 	{
-		SFolderAndSelectedFiles* pFolderAndSelectedFiles = *i;
-
 		WCHAR iChar;
-		LPWSTR lpFolder = const_cast<LPWSTR>(pFolderAndSelectedFiles->Folder.lpFilePath);
-		iChar = lpFolder[pFolderAndSelectedFiles->Folder.uiFileName];
-		lpFolder[pFolderAndSelectedFiles->Folder.uiFileName] = L'\0';
+		LPWSTR lpFolder = const_cast<LPWSTR>(folderAndSelectedFiles.Folder.lpFilePath);
+		iChar = lpFolder[folderAndSelectedFiles.Folder.uiFileName];
+		lpFolder[folderAndSelectedFiles.Folder.uiFileName] = L'\0';
 
-		LPITEMIDLIST pFolder = NULL;
-		if(SUCCEEDED(pDesktop->ParseDisplayName(NULL, NULL, lpFolder, NULL, &pFolder, NULL)))
+		LPITEMIDLIST pFolder = nullptr;
+		if (SUCCEEDED(spDesktop->ParseDisplayName(nullptr, nullptr, lpFolder, nullptr, &pFolder, nullptr)))
 		{
-			lpFolder[pFolderAndSelectedFiles->Folder.uiFileName] = iChar;
+			lpFolder[folderAndSelectedFiles.Folder.uiFileName] = iChar;
 
 			UINT uiCount = 0;
-			LPITEMIDLIST* lpFiles = new LPITEMIDLIST[pFolderAndSelectedFiles->SelectedFiles.size()];
-			memset(lpFiles, 0, sizeof(LPITEMIDLIST) * pFolderAndSelectedFiles->SelectedFiles.size());
-			for(std::list<const SFile*>::iterator j = pFolderAndSelectedFiles->SelectedFiles.begin(); j != pFolderAndSelectedFiles->SelectedFiles.end(); ++j)
+
+			std::vector<LPITEMIDLIST> itemIds(folderAndSelectedFiles.SelectedFiles.size());
+			for (std::list<const SFile*>::iterator j = folderAndSelectedFiles.SelectedFiles.begin(); j != folderAndSelectedFiles.SelectedFiles.end(); ++j)
 			{
-				if(SUCCEEDED(pDesktop->ParseDisplayName(NULL, NULL, (*j)->lpFilePath, NULL, &lpFiles[uiCount], NULL)))
+				if (SUCCEEDED(spDesktop->ParseDisplayName(nullptr, nullptr, (*j)->lpFilePath, nullptr, &itemIds[uiCount], nullptr)))
 				{
 					uiCount++;
 				}
 			}
 
-			if(uiCount > 0)
+			if (uiCount > 0)
 			{
-				pSHOpenFolderAndSelectItems(pFolder, uiCount, lpFiles, 0);
+				LPCITEMIDLIST* pConstItemList = const_cast<LPCITEMIDLIST*>(itemIds.data());
+				SHOpenFolderAndSelectItems(pFolder, uiCount, pConstItemList, 0);
 			}
 
-			for(UINT j = 0; j < uiCount; j++)
+			for (LPITEMIDLIST itemId : itemIds)
 			{
-				CoTaskMemFree(lpFiles[j]);
+				CoTaskMemFree(itemId);
 			}
 
 			CoTaskMemFree(pFolder);
 		}
 
-		lpFolder[pFolderAndSelectedFiles->Folder.uiFileName] = iChar;
-
-		delete pFolderAndSelectedFiles;
+		lpFolder[folderAndSelectedFiles.Folder.uiFileName] = iChar;
 	}
 }
 
@@ -647,20 +624,20 @@ void CGoToFileDlg::Select(int iItem)
 {
 	CWindow Files = GetDlgItem(IDC_FILES);
 	HWND hFiles = Files;
-	if(!hFiles)
+	if (!hFiles)
 	{
 		return;
 	}
 
 	ListView_SetItemState(hFiles, -1, 0, LVIS_SELECTED);
-	if(iItem >= 0)
+	if (iItem >= 0)
 	{
 		ListView_SetItemState(hFiles, iItem, LVIS_SELECTED | LVIS_FOCUSED, LVIS_SELECTED | LVIS_FOCUSED);
 		RECT ItemRect;
-		if(ListView_GetItemRect(hFiles, iItem, &ItemRect, LVIR_BOUNDS))
+		if (ListView_GetItemRect(hFiles, iItem, &ItemRect, LVIR_BOUNDS))
 		{
 			RECT FilesRect;
-			if(Files.GetClientRect(&FilesRect))
+			if (Files.GetClientRect(&FilesRect))
 			{
 				// Center selection in window.
 				ItemRect.top -= (FilesRect.bottom - FilesRect.top) / 2;
@@ -677,7 +654,7 @@ void CGoToFileDlg::Select(int iItem)
 bool CGoToFileDlg::OpenSelectedFiles()
 {
 	HWND hFiles = GetDlgItem(IDC_FILES);
-	if(!hFiles)
+	if (!hFiles)
 	{
 		return false;
 	}
@@ -706,34 +683,30 @@ bool CGoToFileDlg::OpenSelectedFiles()
 	}
 	lpViewKind[MAX_PATH] = '\0';
 
-	BSTR lpViewKindBStr = SysAllocString(lpViewKind);
-	if(lpViewKindBStr != NULL)
+	CComBSTR spViewKindBStr = lpViewKind;
+	if (spViewKindBStr != nullptr)
 	{
-		CComPtr<VxDTE::ItemOperations> pItemOperations;
-		if(SUCCEEDED(m_spDTE->get_ItemOperations(&pItemOperations)) && pItemOperations)
+		CComPtr<VxDTE::ItemOperations> spItemOperations;
+		if (SUCCEEDED(m_spDTE->get_ItemOperations(&spItemOperations)) && spItemOperations)
 		{
 			int iItem = -1;
-			while((iItem = ListView_GetNextItem(hFiles, iItem, LVNI_SELECTED)) >= 0)
+			while ((iItem = ListView_GetNextItem(hFiles, iItem, LVNI_SELECTED)) >= 0)
 			{
-				if(iItem < static_cast<int>(FilteredFiles.size()))
+				if (iItem < static_cast<int>(m_filteredFiles.size()))
 				{
-					const SFilteredFile& FilteredFile = FilteredFiles[iItem];
+					const SFilteredFile& FilteredFile = m_filteredFiles[iItem];
 
-					BSTR lpFilePathBStr = SysAllocString(FilteredFile.pFile->lpFilePath);
-					if(lpFilePathBStr != NULL)
+					CComBSTR spFilePathBStr = SysAllocString(FilteredFile.pFile->lpFilePath);
+					if (spFilePathBStr != nullptr)
 					{
-						CComPtr<VxDTE::Window> pWindow;
-						pItemOperations->OpenFile(lpFilePathBStr, lpViewKindBStr, &pWindow);
-
-						SysFreeString(lpFilePathBStr);
+						CComPtr<VxDTE::Window> spWindow;
+						spItemOperations->OpenFile(spFilePathBStr, spViewKindBStr, &spWindow);
 					}
 
 					bResult = true;
 				}
 			}
 		}
-
-		SysFreeString(lpViewKindBStr);
 	}
 
 	return bResult;
@@ -743,22 +716,22 @@ void CGoToFileDlg::CreateFilterList(LPWSTR& lpFilterStringTable, std::list<SFilt
 {
 	DestroyFilterList(lpFilterStringTable, Filters);
 
-	BSTR lpFilter = NULL;
-	GetDlgItem(IDC_FILTER).GetWindowText(lpFilter);
-	if(lpFilter)
+	CComBSTR spFilter;
+	GetDlgItem(IDC_FILTER).GetWindowText(&spFilter);
+	if (spFilter)
 	{
-		const size_t cchFilter = wcslen(lpFilter) + 1;
+		const size_t cchFilter = wcslen(spFilter) + 1;
 		lpFilterStringTable = new WCHAR[cchFilter];
-		wcscpy_s(lpFilterStringTable, cchFilter, lpFilter);
+		wcscpy_s(lpFilterStringTable, cchFilter, spFilter);
 
-		LPWSTR lpFilter = NULL;
+		LPWSTR lpFilter = nullptr;
 		ESearchField eSearchField = SEARCH_FIELD_FILE_NAME;
 		ELogicOperator eLogicOperator = LOGIC_OPERATOR_NONE;
 		bool bNot = false;
 		bool bQuoted = false;
 
 		bool bParse = true;
-		for(LPWSTR pChar = lpFilterStringTable; bParse; pChar++)
+		for (LPWSTR pChar = lpFilterStringTable; bParse; pChar++)
 		{
 			bool bDone = false;
 			switch(*pChar)
@@ -768,14 +741,14 @@ void CGoToFileDlg::CreateFilterList(LPWSTR& lpFilterStringTable, std::list<SFilt
 				bDone = true;
 				break;
 			case L'&':
-				if(lpFilter == NULL && eLogicOperator == LOGIC_OPERATOR_NONE && !bQuoted)
+				if (lpFilter == nullptr && eLogicOperator == LOGIC_OPERATOR_NONE && !bQuoted)
 				{
 					eLogicOperator = LOGIC_OPERATOR_AND;
 					continue;
 				}
 				break;
 			case L'|':
-				if(lpFilter == NULL && eLogicOperator == LOGIC_OPERATOR_NONE && !bQuoted)
+				if (lpFilter == nullptr && eLogicOperator == LOGIC_OPERATOR_NONE && !bQuoted)
 				{
 					eLogicOperator = LOGIC_OPERATOR_OR;
 					continue;
@@ -783,32 +756,32 @@ void CGoToFileDlg::CreateFilterList(LPWSTR& lpFilterStringTable, std::list<SFilt
 				break;
 			case L'-':
 			case L'!':
-				if(lpFilter == NULL && !bNot && !bQuoted)
+				if (lpFilter == nullptr && !bNot && !bQuoted)
 				{
 					bNot = true;
 					continue;
 				}
 				break;
 			case L'"':
-				if(lpFilter == NULL && !bQuoted)
+				if (lpFilter == nullptr && !bQuoted)
 				{
 					bQuoted = true;
 					continue;
 				}
-				else if(bQuoted)
+				else if (bQuoted)
 				{
 					bDone = true;
 				}
 				break;
 			case L'\\':
 			case L'/':
-				if(lpFilter == NULL && !bQuoted)
+				if (lpFilter == nullptr && !bQuoted)
 				{
-					if(eSearchField == SEARCH_FIELD_FILE_NAME)
+					if (eSearchField == SEARCH_FIELD_FILE_NAME)
 					{
 						eSearchField = SEARCH_FIELD_FILE_PATH;
 					}
-					else if(eSearchField == SEARCH_FIELD_PROJECT_NAME)
+					else if (eSearchField == SEARCH_FIELD_PROJECT_NAME)
 					{
 						eSearchField = SEARCH_FIELD_PROJECT_PATH;
 					}
@@ -816,13 +789,13 @@ void CGoToFileDlg::CreateFilterList(LPWSTR& lpFilterStringTable, std::list<SFilt
 				}
 				break;
 			case L':':
-				if(lpFilter == NULL && !bQuoted)
+				if (lpFilter == nullptr && !bQuoted)
 				{
-					if(eSearchField == SEARCH_FIELD_FILE_NAME)
+					if (eSearchField == SEARCH_FIELD_FILE_NAME)
 					{
 						eSearchField = SEARCH_FIELD_PROJECT_NAME;
 					}
-					else if(eSearchField == SEARCH_FIELD_FILE_PATH)
+					else if (eSearchField == SEARCH_FIELD_FILE_PATH)
 					{
 						eSearchField = SEARCH_FIELD_PROJECT_PATH;
 					}
@@ -833,34 +806,34 @@ void CGoToFileDlg::CreateFilterList(LPWSTR& lpFilterStringTable, std::list<SFilt
 			case L'\t':
 			case L'\r':
 			case L'\n':
-				if(!bQuoted)
+				if (!bQuoted)
 				{
 					bDone = true;
 				}
 				break;
 			}
-			if(bDone)
+			if (bDone)
 			{
-				if(lpFilter != NULL && *lpFilter != L'\0')
+				if (lpFilter != nullptr && *lpFilter != L'\0')
 				{
-					if(eLogicOperator == LOGIC_OPERATOR_NONE)
+					if (eLogicOperator == LOGIC_OPERATOR_NONE)
 					{
 						eLogicOperator = LOGIC_OPERATOR_AND;
 					}
-					if(bNot)
+					if (bNot)
 					{
 						eLogicOperator = static_cast<ELogicOperator>(eLogicOperator << 1);
 					}
 					*pChar = L'\0';
 					Filters.push_back(SFilter(lpFilter, eSearchField, eLogicOperator));
 				}
-				lpFilter = NULL;
+				lpFilter = nullptr;
 				eSearchField = SEARCH_FIELD_FILE_NAME;
 				eLogicOperator = LOGIC_OPERATOR_NONE;
 				bNot = false;
 				bQuoted = false;
 			}
-			else if(lpFilter == NULL)
+			else if (lpFilter == nullptr)
 			{
 				lpFilter = pChar;
 			}
@@ -871,7 +844,7 @@ void CGoToFileDlg::CreateFilterList(LPWSTR& lpFilterStringTable, std::list<SFilt
 void CGoToFileDlg::DestroyFilterList(LPWSTR& lpFilterStringTable, std::list<SFilter>& Filters)
 {
 	delete []lpFilterStringTable;
-	lpFilterStringTable = NULL;
+	lpFilterStringTable = nullptr;
 
 	Filters.clear();
 }
@@ -879,7 +852,7 @@ void CGoToFileDlg::DestroyFilterList(LPWSTR& lpFilterStringTable, std::list<SFil
 WCHAR CGoToFileDlg::SFilter::Normalize(WCHAR cChar, ESearchField eSearchField)
 {
 	cChar = tolower(cChar);
-	if((eSearchField == SEARCH_FIELD_FILE_PATH || eSearchField == SEARCH_FIELD_PROJECT_PATH) && cChar == L'/')
+	if ((eSearchField == SEARCH_FIELD_FILE_PATH || eSearchField == SEARCH_FIELD_PROJECT_PATH) && cChar == L'/')
 	{
 		cChar = L'\\';
 	}
@@ -889,28 +862,28 @@ WCHAR CGoToFileDlg::SFilter::Normalize(WCHAR cChar, ESearchField eSearchField)
 int CGoToFileDlg::SFilter::Like(LPCWSTR lpSearch, LPCWSTR lpFilter, ESearchField eSearchField)
 {
 	LPCWSTR lpSearchStart = lpSearch;
-	LPCWSTR lpSearchMatch = NULL;
+	LPCWSTR lpSearchMatch = nullptr;
 
-	while(*lpFilter)
+	while (*lpFilter)
 	{
-		if(*lpFilter == L'*')
+		if (*lpFilter == L'*')
 		{
-			if(lpFilter[1] == L'*')
+			if (lpFilter[1] == L'*')
 			{
 				lpFilter++;
 				continue;
 			}
-			else if(lpFilter[1] == L'\0')
+			else if (lpFilter[1] == L'\0')
 			{
 				return 0;
 			}
 			else
 			{
 				lpFilter++;
-				while(*lpSearch)
+				while (*lpSearch)
 				{
 					int iResult = Like(lpSearch, lpFilter, eSearchField);
-					if(iResult >= 0)
+					if (iResult >= 0)
 					{
 						return lpSearchMatch ? static_cast<int>(lpSearchMatch - lpSearchStart) : static_cast<int>(lpSearch - lpSearchStart) + iResult;
 					}
@@ -920,9 +893,9 @@ int CGoToFileDlg::SFilter::Like(LPCWSTR lpSearch, LPCWSTR lpFilter, ESearchField
 				return -1;
 			}
 		}
-		else if(*lpFilter == L'?')
+		else if (*lpFilter == L'?')
 		{
-			if(*lpSearch == L'\0')
+			if (*lpSearch == L'\0')
 			{
 				return -1;
 			}
@@ -931,15 +904,15 @@ int CGoToFileDlg::SFilter::Like(LPCWSTR lpSearch, LPCWSTR lpFilter, ESearchField
 		}
 		else
 		{
-			if(*lpSearch == L'\0')
+			if (*lpSearch == L'\0')
 			{
 				return -1;
 			}
-			else if(*lpFilter != Normalize(*lpSearch, eSearchField))
+			else if (*lpFilter != Normalize(*lpSearch, eSearchField))
 			{
 				return -1;
 			}
-			if(lpSearchMatch == NULL)
+			if (lpSearchMatch == nullptr)
 			{
 				lpSearchMatch = lpSearch;
 			}
@@ -948,7 +921,7 @@ int CGoToFileDlg::SFilter::Like(LPCWSTR lpSearch, LPCWSTR lpFilter, ESearchField
 		}
 	}
 
-	if(*lpSearch == L'\0')
+	if (*lpSearch == L'\0')
 	{
 		return lpSearchMatch ? static_cast<int>(lpSearchMatch - lpSearchStart) : 0;
 	}
@@ -980,24 +953,24 @@ int CGoToFileDlg::SFilter::Match(const SFile& File) const
 
 	size_t iFileLength = wcslen(lpSearch);
 	size_t iFilterLength = wcslen(lpFilter);
-	if(bWildcard)
+	if (bWildcard)
 	{
 		iMatch = Like(lpSearch, lpFilter, eSearchField);
 	}
-	else if(iFilterLength <= iFileLength)
+	else if (iFilterLength <= iFileLength)
 	{
-		for(size_t i = 0; i <= iFileLength - iFilterLength; i++)
+		for (size_t i = 0; i <= iFileLength - iFilterLength; i++)
 		{
 			bool bSubMatch = true;
-			for(size_t j = 0; j < iFilterLength; j++)
+			for (size_t j = 0; j < iFilterLength; j++)
 			{
-				if(Normalize(lpSearch[i + j], eSearchField) != lpFilter[j])
+				if (Normalize(lpSearch[i + j], eSearchField) != lpFilter[j])
 				{
 					bSubMatch = false;
 					break;
 				}
 			}
-			if(bSubMatch)
+			if (bSubMatch)
 			{
 				iMatch = static_cast<int>(i);
 				break;
@@ -1005,9 +978,9 @@ int CGoToFileDlg::SFilter::Match(const SFile& File) const
 		}
 	}
 
-	if(eLogicOperator & LOGIC_OPERATOR_NOT_MASK)
+	if (eLogicOperator & LOGIC_OPERATOR_NOT_MASK)
 	{
-		if(iMatch < 0)
+		if (iMatch < 0)
 		{
 			iMatch = static_cast<int>(iFileLength - iFilterLength);
 		}
@@ -1023,9 +996,9 @@ int CGoToFileDlg::SFilter::Match(const SFile& File) const
 LRESULT CALLBACK CGoToFileDlg::FilterProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	CGoToFileDlg::SWndProc* pWndProc = CGoToFileDlg::GetWndProc(hWnd);
-	if(pWndProc)
+	if (pWndProc)
 	{
-		if(uMsg == WM_KEYDOWN)
+		if (uMsg == WM_KEYDOWN)
 		{
 			switch(wParam)
 			{
@@ -1033,7 +1006,7 @@ LRESULT CALLBACK CGoToFileDlg::FilterProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
 			case VK_UP:
 			case VK_NEXT:
 			case VK_PRIOR:
-				SendMessage(pWndProc->OpenNow.GetDlgItem(IDC_FILES), uMsg, wParam, lParam);
+				SendMessage(pWndProc->goToFileDlg.GetDlgItem(IDC_FILES), uMsg, wParam, lParam);
 				return 0;
 			}
 		}
@@ -1042,35 +1015,35 @@ LRESULT CALLBACK CGoToFileDlg::FilterProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
 	return 0;
 }
 
-std::list<CGoToFileDlg::SWndProc*> CGoToFileDlg::WndProcs;
+std::list<CGoToFileDlg::SWndProc*> CGoToFileDlg::s_wndProcs;
 
 CGoToFileDlg::SWndProc* CGoToFileDlg::GetWndProc(HWND hWnd)
 {
-	for(std::list<CGoToFileDlg::SWndProc*>::iterator i = CGoToFileDlg::WndProcs.begin(); i != CGoToFileDlg::WndProcs.end(); i++)
+	for (std::list<CGoToFileDlg::SWndProc*>::iterator i = CGoToFileDlg::s_wndProcs.begin(); i != CGoToFileDlg::s_wndProcs.end(); i++)
 	{
 		CGoToFileDlg::SWndProc* pWndProc = *i;
-		if(pWndProc->hWnd == hWnd)
+		if (pWndProc->hWnd == hWnd)
 		{
 			return pWndProc;
 		}
 	}
-	return NULL;
+	return nullptr;
 }
 
-void CGoToFileDlg::RegisterWndProc(CGoToFileDlg& OpenNow, HWND hWnd, WNDPROC pWndProc)
+void CGoToFileDlg::RegisterWndProc(CGoToFileDlg& goToFileDlg, HWND hWnd, WNDPROC pWndProc)
 {
-	CGoToFileDlg::WndProcs.push_back(new SWndProc(OpenNow, hWnd, pWndProc));
+	CGoToFileDlg::s_wndProcs.push_back(new SWndProc(goToFileDlg, hWnd, pWndProc));
 }
 
-void CGoToFileDlg::UnregisterWndProc(CGoToFileDlg* pOpenNow)
+void CGoToFileDlg::UnregisterWndProc(CGoToFileDlg* pGoToFileDlg)
 {
-	for(std::list<CGoToFileDlg::SWndProc*>::iterator i = CGoToFileDlg::WndProcs.begin(); i != CGoToFileDlg::WndProcs.end(); i++)
+	for (std::list<CGoToFileDlg::SWndProc*>::iterator i = CGoToFileDlg::s_wndProcs.begin(); i != CGoToFileDlg::s_wndProcs.end(); i++)
 	{
 		CGoToFileDlg::SWndProc* pWndProc = *i;
-		if(&pWndProc->OpenNow == pOpenNow)
+		if (&pWndProc->goToFileDlg == pGoToFileDlg)
 		{
 			delete pWndProc;
-			CGoToFileDlg::WndProcs.erase(i);
+			CGoToFileDlg::s_wndProcs.erase(i);
 			return;
 		}
 	}

@@ -6,7 +6,7 @@
 #define IDS_PRODUCTDETAILS              102
 #define IDS_COMPANYNAME                 103
 #define IDS_VERSION                     104
-#define IDD_OPENNOW                     201
+#define IDD_GOTOFILE                    201
 #define IDC_FILES                       202
 #define IDC_FILTER                      203
 #define IDC_PROJECTS                    204

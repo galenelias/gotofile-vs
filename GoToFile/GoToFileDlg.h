@@ -2,6 +2,8 @@
  *	GoToFile
 
  *	Copyright (C) 2009-2012 Ryan Gregg
+ *	Copyright (C) 2019 Galen Elias
+
  *
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
@@ -35,7 +37,7 @@ public:
 		DestroyBrowseFileList();
 	}
 
-	enum { IDD = IDD_OPENNOW };
+	enum { IDD = IDD_GOTOFILE };
 
 	static const int iMaxColumns = 4;
 	static int lpSortColumns[iMaxColumns];
@@ -65,7 +67,7 @@ public:
 		CAxDialogImpl<CGoToFileDlg>::OnInitDialog(uMsg, wParam, lParam, bHandled);
 
 		HICON hIcon = LoadIcon(1, 32, 32);
-		if(hIcon)
+		if (hIcon)
 		{
 			SetIcon(hIcon);
 		}
@@ -97,20 +99,20 @@ public:
 		}
 
 		RECT ClientRect;
-		if(GetClientRect(&ClientRect))
+		if (GetClientRect(&ClientRect))
 		{
 			WORD uiInitialWidth = static_cast<WORD>(ClientRect.right - ClientRect.left);
 			WORD uiInitialHeight = static_cast<WORD>(ClientRect.bottom - ClientRect.top);
-			iInitialSize = MAKELONG(uiInitialWidth, uiInitialHeight);
+			m_iInitialSize = MAKELONG(uiInitialWidth, uiInitialHeight);
 		}
 
 		CWindow Filter = GetDlgItem(IDC_FILTER);
-		if(Filter)
+		if (Filter)
 		{
 			Filter.SetFocus();
 
 			WNDPROC pWndProc = reinterpret_cast<WNDPROC>(::SetWindowLongPtr(Filter, GWL_WNDPROC, reinterpret_cast<LONG_PTR>(CGoToFileDlg::FilterProc)));
-			if(pWndProc)
+			if (pWndProc)
 			{
 				RegisterWndProc(*this, Filter, pWndProc);
 			}
@@ -126,18 +128,18 @@ public:
 
 		RefreshProjectList();
 
-		Settings.Store();
-		Settings.Read();
-		Settings.Restore();
+		m_settings.Store();
+		m_settings.Read();
+		m_settings.Restore();
 
-		if(GetSelectedProject() == static_cast<unsigned int>(KNOWN_FILTER_BROWSE))
+		if (GetSelectedProject() == static_cast<unsigned int>(KNOWN_FILTER_BROWSE))
 		{
-			CreateBrowseFileList(Settings.GetBrowsePath().c_str());
+			CreateBrowseFileList(m_settings.GetBrowsePath().c_str());
 		}
 
 		RefreshFileList();
 
-		bInitializing = false;
+		m_bInitializing = false;
 
 		bHandled = TRUE;
 		return 0;
@@ -146,18 +148,18 @@ public:
 	LRESULT OnDestroy(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 	{
 		CWindow Filter = GetDlgItem(IDC_FILTER);
-		if(Filter)
+		if (Filter)
 		{
 			CGoToFileDlg::SWndProc* pWndProc = CGoToFileDlg::GetWndProc(Filter);
-			if(pWndProc)
+			if (pWndProc)
 			{
 				::SetWindowLongPtr(Filter, GWL_WNDPROC, reinterpret_cast<LONG_PTR>(pWndProc->pWndProc));
 			}
 		}
 		UnregisterWndProc(this);
 
-		Settings.Store();
-		Settings.Write();
+		m_settings.Store();
+		m_settings.Write();
 
 		return CAxDialogImpl<CGoToFileDlg>::OnDestroy(uMsg, wParam, lParam, bHandled);
 	}
@@ -208,7 +210,7 @@ public:
 
 	LRESULT OnChangeFilter(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 	{
-		if(!bInitializing && !Settings.Restoring())
+		if (!m_bInitializing && !m_settings.Restoring())
 		{
 			RefreshFileList();
 		}
@@ -218,11 +220,11 @@ public:
 	LRESULT OnGetDispInfoFiles(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*bHandled*/)
 	{
 		LV_DISPINFO* pDispInfo = reinterpret_cast<LV_DISPINFO*>(pNHM);
-		if(pDispInfo->item.mask & LVIF_TEXT && pDispInfo->item.cchTextMax > 0)
+		if (pDispInfo->item.mask & LVIF_TEXT && pDispInfo->item.cchTextMax > 0)
 		{
-			if(pDispInfo->item.iItem >= 0 && pDispInfo->item.iItem < (LPARAM)FilteredFiles.size())
+			if (pDispInfo->item.iItem >= 0 && pDispInfo->item.iItem < (LPARAM)m_filteredFiles.size())
 			{
-				const SFilteredFile& FilteredFile = FilteredFiles[pDispInfo->item.iItem];
+				const SFilteredFile& FilteredFile = m_filteredFiles[pDispInfo->item.iItem];
 				switch(pDispInfo->item.iSubItem)
 				{
 				case 0:
@@ -250,11 +252,11 @@ public:
 	LRESULT OnGetInfoTipFiles(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*bHandled*/)
 	{
 		LPNMLVGETINFOTIP pInfoTip = reinterpret_cast<LPNMLVGETINFOTIP>(pNHM);
-		if(pInfoTip->cchTextMax > 0)
+		if (pInfoTip->cchTextMax > 0)
 		{
-			if(pInfoTip->iItem >= 0 && static_cast<size_t>(pInfoTip->iItem) < FilteredFiles.size())
+			if (pInfoTip->iItem >= 0 && static_cast<size_t>(pInfoTip->iItem) < m_filteredFiles.size())
 			{
-				const SFilteredFile& FilteredFile = FilteredFiles[pInfoTip->iItem];
+				const SFilteredFile& FilteredFile = m_filteredFiles[pInfoTip->iItem];
 				switch(pInfoTip->iSubItem)
 				{
 				case 0:
@@ -275,17 +277,17 @@ public:
 	{
 		NM_LISTVIEW FAR* pColumnClick = reinterpret_cast<NM_LISTVIEW FAR*>(pNHM);
 
-		for(int i = 0; i < iMaxColumns; i++)
+		for (int i = 0; i < iMaxColumns; i++)
 		{
-			if(lpSortColumns[i] == pColumnClick->iSubItem)
+			if (lpSortColumns[i] == pColumnClick->iSubItem)
 			{
-				if(i == 0)
+				if (i == 0)
 				{
 					bSortDescending = !bSortDescending;
 				}
 				else
 				{
-					for(int j = 0; j < i; j++)
+					for (int j = 0; j < i; j++)
 					{
 						lpSortColumns[i - j] = lpSortColumns[i - j - 1];
 					}
@@ -301,7 +303,7 @@ public:
 
 	LRESULT OnDoubleClickFiles(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*bHandled*/)
 	{
-		if(OpenSelectedFiles())
+		if (OpenSelectedFiles())
 		{
 			EndDialog(0);
 		}
@@ -312,11 +314,11 @@ public:
 	LRESULT OnGetDispInfoProjects(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*bHandled*/)
 	{
 		PNMCOMBOBOXEX pDispInfo = reinterpret_cast<PNMCOMBOBOXEX>(pNHM);
-		if(pDispInfo->ceItem.mask & CBEIF_TEXT && pDispInfo->ceItem.cchTextMax > 0)
+		if (pDispInfo->ceItem.mask & CBEIF_TEXT && pDispInfo->ceItem.cchTextMax > 0)
 		{
-			if(pDispInfo->ceItem.iItem >= static_cast<INT>(KNOWN_FILTER_COUNT) && static_cast<size_t>(pDispInfo->ceItem.iItem) < static_cast<INT>(KNOWN_FILTER_COUNT) + ProjectNames.size())
+			if (pDispInfo->ceItem.iItem >= static_cast<INT>(KNOWN_FILTER_COUNT) && static_cast<size_t>(pDispInfo->ceItem.iItem) < static_cast<INT>(KNOWN_FILTER_COUNT) + m_projectNames.size())
 			{
-				LPCWSTR lpProject = ProjectNames[pDispInfo->ceItem.iItem - static_cast<INT>(KNOWN_FILTER_COUNT)];
+				LPCWSTR lpProject = m_projectNames[pDispInfo->ceItem.iItem - static_cast<INT>(KNOWN_FILTER_COUNT)];
 
 				wcsncpy_s(pDispInfo->ceItem.pszText, pDispInfo->ceItem.cchTextMax, lpProject, pDispInfo->ceItem.cchTextMax);
 				pDispInfo->ceItem.pszText[pDispInfo->ceItem.cchTextMax - 1] = L'\0';
@@ -327,9 +329,9 @@ public:
 
 	LRESULT OnSelChangedProjects(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 	{
-		if(!bInitializing && !Settings.Restoring())
+		if (!m_bInitializing && !m_settings.Restoring())
 		{
-			if(GetSelectedProject() == static_cast<unsigned int>(KNOWN_FILTER_BROWSE))
+			if (GetSelectedProject() == static_cast<unsigned int>(KNOWN_FILTER_BROWSE))
 			{
 				CreateBrowseFileList();
 			}
@@ -340,17 +342,17 @@ public:
 
 	LONG GetInitialWidth() const
 	{
-		return static_cast<LONG>(LOWORD(iInitialSize));
+		return static_cast<LONG>(LOWORD(m_iInitialSize));
 	}
 
 	LONG GetInitialHeight() const
 	{
-		return static_cast<LONG>(HIWORD(iInitialSize));
+		return static_cast<LONG>(HIWORD(m_iInitialSize));
 	}
 
 private:
-	bool bInitializing;
-	GoToFileSettings Settings;
+	bool m_bInitializing;
+	GoToFileSettings m_settings;
 
 	enum EAnchor
 	{
@@ -363,11 +365,11 @@ private:
 
 	struct SAnchor 
 	{
-		inline SAnchor() : hWindow(0), eAnchor(ANCHOR_NONE)
+		SAnchor() : hWindow(0), eAnchor(ANCHOR_NONE)
 		{
 		}
 
-		inline void Init(HWND hParent, HWND hWindow, EAnchor eAnchor)
+		void Init(HWND hParent, HWND hWindow, EAnchor eAnchor)
 		{
 			this->hWindow = hWindow;
 			this->eAnchor = eAnchor;
@@ -384,22 +386,22 @@ private:
 
 		void Update(LONG iDeltaX, LONG iDeltaY)
 		{
-			if(hWindow)
+			if (hWindow)
 			{
 				RECT NewRect = Rect;
-				if((eAnchor & ANCHOR_TOP) == 0)
+				if ((eAnchor & ANCHOR_TOP) == 0)
 				{
 					NewRect.top += iDeltaY;
 				}
-				if((eAnchor & ANCHOR_BOTTOM) != 0)
+				if ((eAnchor & ANCHOR_BOTTOM) != 0)
 				{
 					NewRect.bottom += iDeltaY;
 				}
-				if((eAnchor & ANCHOR_LEFT) == 0)
+				if ((eAnchor & ANCHOR_LEFT) == 0)
 				{
 					NewRect.left += iDeltaX;
 				}
-				if((eAnchor & ANCHOR_RIGHT) != 0)
+				if ((eAnchor & ANCHOR_RIGHT) != 0)
 				{
 					NewRect.right += iDeltaX;
 				}
@@ -413,7 +415,7 @@ private:
 		RECT Rect;
 	};
 
-	LONG iInitialSize;
+	LONG m_iInitialSize;
 	SAnchor FilesAnchor;
 	SAnchor FilterAnchor;
 	SAnchor ProjectsAnchor;
@@ -428,9 +430,10 @@ private:
 	struct SName
 	{
 	public:
-		inline SName(T& Names, LPCWSTR lpName) : Names(Names), bUsed(false), lpName(NULL)
+		SName(T& Names, LPCWSTR lpName)
+			: Names(Names), bUsed(false), lpName(nullptr)
 		{
-			if(lpName != NULL)
+			if (lpName != nullptr)
 			{
 				const size_t cchName = wcslen(lpName) + 1;
 				this->lpName = new WCHAR[cchName];
@@ -438,11 +441,12 @@ private:
 			}
 		}
 
-		inline SName(SName<T>& Parent, LPCWSTR lpName) : Names(Parent.Names), bUsed(false), lpName(NULL)
+		SName(SName<T>& Parent, LPCWSTR lpName)
+			: Names(Parent.Names), bUsed(false), lpName(nullptr)
 		{
-			if(lpName != NULL)
+			if (lpName != nullptr)
 			{
-				if(Parent.lpName != NULL)
+				if (Parent.lpName != nullptr)
 				{
 					const size_t cchName = wcslen(Parent.lpName) + 1 + wcslen(lpName) + 1;
 					this->lpName = new WCHAR[cchName];
@@ -464,22 +468,17 @@ private:
 			}
 		}
 
-		inline ~SName()
+		~SName()
 		{
-			if(!bUsed)
+			if (!bUsed)
 			{
 				delete []lpName;
 			}
 		}
 
-		inline bool GetUsed() const
+		LPCWSTR GetName()
 		{
-			return bUsed;
-		}
-
-		inline LPCWSTR GetName()
-		{
-			if(!bUsed && lpName)
+			if (!bUsed && lpName)
 			{
 				bUsed = true;
 				Names.push_back(lpName);
@@ -494,8 +493,8 @@ private:
 	};
 
 	void CreateFileList();
-	void CreateFileList(SName<std::list<LPWSTR>>& ParentProjectPath, CComPtr<VxDTE::Project> pProject);
-	void CreateFileList(SName<std::vector<LPWSTR>>& ProjectName, SName<std::list<LPWSTR>>& ParentProjectPath, CComPtr<VxDTE::ProjectItems> pParentProjectItems);
+	void CreateFileList(SName<std::list<LPWSTR>>& ParentProjectPath, VxDTE::Project* pProject);
+	void CreateFileList(SName<std::vector<LPWSTR>>& ProjectName, SName<std::list<LPWSTR>>& ParentProjectPath, VxDTE::ProjectItems* pParentProjectItems);
 	void DestroyFileList();
 
 	void CreateBrowseFileList();
@@ -504,41 +503,41 @@ private:
 
 	unsigned int GetSelectedProject();
 
-	static int CompareProjects(const void *pProject1, const void *pProject2);
 	void RefreshProjectList();
 
-	static int CompareFiles(const void *pFile1, const void *pFile2);
 	void SortFileList();
 	void RefreshFileList();
 
 	void ExploreSelectedFiles();
 
 	void Select(int iItem);
-	void ScrollTo(int iItem);
 	bool OpenSelectedFiles();
 
 	struct SFile
 	{
-		inline SFile(LPWSTR lpFilePath, LPCWSTR lpProjectName, LPCWSTR lpProjectPath) : lpFilePath(lpFilePath), uiFileName(0), lpProjectName(lpProjectName), lpProjectPath(lpProjectPath)
+		SFile(LPWSTR lpFilePath, LPCWSTR lpProjectName, LPCWSTR lpProjectPath)
+			: lpFilePath(lpFilePath), uiFileName(0), lpProjectName(lpProjectName), lpProjectPath(lpProjectPath)
 		{
 			LPWSTR lpFileName = std::max<LPWSTR>(wcsrchr(lpFilePath, L'\\'), wcsrchr(lpFilePath, L'/'));
-			if(lpFileName)
+			if (lpFileName)
 			{
 				uiFileName = static_cast<unsigned short>(lpFileName - lpFilePath) + 1;
 			}
 		}
 
-		inline SFile(LPWSTR lpFilePath, unsigned short uiFileName, LPCWSTR lpProjectName, LPCWSTR lpProjectPath) : lpFilePath(lpFilePath), uiFileName(uiFileName), lpProjectName(lpProjectName), lpProjectPath(lpProjectPath)
+		SFile(LPWSTR lpFilePath, unsigned short uiFileName, LPCWSTR lpProjectName, LPCWSTR lpProjectPath)
+			: lpFilePath(lpFilePath), uiFileName(uiFileName), lpProjectName(lpProjectName), lpProjectPath(lpProjectPath)
 		{
 		}
 
-		inline SFile(const SFile& File) : lpFilePath(File.lpFilePath), uiFileName(File.uiFileName), lpProjectName(File.lpProjectName), lpProjectPath(File.lpProjectPath)
+		SFile(const SFile& File)
+			: lpFilePath(File.lpFilePath), uiFileName(File.uiFileName), lpProjectName(File.lpProjectName), lpProjectPath(File.lpProjectPath)
 		{
 		}
 
-		inline SFile& operator=(const SFile& Other)
+		SFile& operator=(const SFile& Other)
 		{
-			if(this != &Other)
+			if (this != &Other)
 			{
 				lpFilePath = Other.lpFilePath;
 				uiFileName = Other.uiFileName;
@@ -556,7 +555,8 @@ private:
 
 	struct SFilteredFile
 	{
-		inline SFilteredFile(const SFile* pFile, int iMatch) : pFile(pFile), iMatch(iMatch)
+		SFilteredFile(const SFile* pFile, int iMatch)
+			: pFile(pFile), iMatch(iMatch)
 		{
 		}
 
@@ -564,16 +564,16 @@ private:
 		int iMatch;
 	};
 
-	std::vector<LPWSTR> ProjectNames;
-	std::list<LPWSTR> ProjectPaths;
-	std::list<SFile> Files;
-	std::list<SFile> BrowseFiles;
-	std::vector<SFilteredFile> FilteredFiles;
+	std::vector<LPWSTR> m_projectNames;
+	std::list<LPWSTR> m_projectPaths;
+	std::list<SFile> m_files;
+	std::list<SFile> m_browseFiles;
+	std::vector<SFilteredFile> m_filteredFiles;
 
 public:
-	inline const std::vector<LPWSTR>& GetProjectNames() const
+	const std::vector<LPWSTR>& GetProjectNames() const
 	{
-		return ProjectNames;
+		return m_projectNames;
 	}
 
 	enum EKnownFilter
@@ -630,12 +630,13 @@ private:
 	struct SFilter
 	{
 	public:
-		inline SFilter(LPWSTR lpFilter, ESearchField eSearchField, ELogicOperator eLogicOperator) : lpFilter(lpFilter), eSearchField(eSearchField), eLogicOperator(eLogicOperator), bWildcard(false)
+		SFilter(LPWSTR lpFilter, ESearchField eSearchField, ELogicOperator eLogicOperator)
+			: lpFilter(lpFilter), eSearchField(eSearchField), eLogicOperator(eLogicOperator), bWildcard(false)
 		{
 			while(*lpFilter)
 			{
 				*lpFilter = Normalize(*lpFilter, eSearchField);
-				if(*lpFilter == L'*' || *lpFilter == L'?')
+				if (*lpFilter == L'*' || *lpFilter == L'?')
 				{
 					bWildcard = true;
 				}
@@ -643,11 +644,12 @@ private:
 			}
 		}
 
-		inline SFilter(const SFilter& Filter) : lpFilter(Filter.lpFilter), eSearchField(Filter.eSearchField), eLogicOperator(Filter.eLogicOperator), bWildcard(Filter.bWildcard)
+		SFilter(const SFilter& Filter)
+			: lpFilter(Filter.lpFilter), eSearchField(Filter.eSearchField), eLogicOperator(Filter.eLogicOperator), bWildcard(Filter.bWildcard)
 		{
 		}
 
-		inline EFilterTerm GetFilterTerm() const
+		EFilterTerm GetFilterTerm() const
 		{
 			return static_cast<EFilterTerm>(eLogicOperator << eSearchField);
 		}
@@ -672,18 +674,19 @@ private:
 	struct SFolderAndSelectedFiles
 	{
 	public:
-		inline SFolderAndSelectedFiles(const SFile& Folder) : Folder(Folder)
+		SFolderAndSelectedFiles(const SFile& Folder)
+			: Folder(Folder)
 		{
 			SelectedFiles.push_back(&Folder);
 		}
 
-		inline bool Contains(const SFile& File) const
+		bool Contains(const SFile& File) const
 		{
-			if(Folder.uiFileName == File.uiFileName)
+			if (Folder.uiFileName == File.uiFileName)
 			{
-				for(unsigned short i = 0; i < Folder.uiFileName; i++)
+				for (unsigned short i = 0; i < Folder.uiFileName; i++)
 				{
-					if(SFilter::Normalize(Folder.lpFilePath[i], SEARCH_FIELD_FILE_PATH) != SFilter::Normalize(File.lpFilePath[i], SEARCH_FIELD_FILE_PATH))
+					if (SFilter::Normalize(Folder.lpFilePath[i], SEARCH_FIELD_FILE_PATH) != SFilter::Normalize(File.lpFilePath[i], SEARCH_FIELD_FILE_PATH))
 					{
 						return false;
 					}
@@ -700,15 +703,17 @@ private:
 public:
 	struct SWndProc
 	{
-		CGoToFileDlg& OpenNow;
+		CGoToFileDlg& goToFileDlg;
 		HWND hWnd;
 		WNDPROC pWndProc;
 
-		inline SWndProc(CGoToFileDlg& OpenNow, HWND hWnd, WNDPROC pWndProc) : OpenNow(OpenNow), hWnd(hWnd), pWndProc(pWndProc)
+		SWndProc(CGoToFileDlg& goToFileDlg, HWND hWnd, WNDPROC pWndProc)
+			: goToFileDlg(goToFileDlg), hWnd(hWnd), pWndProc(pWndProc)
 		{
 		}
 
-		inline SWndProc(SWndProc& WndProc) : OpenNow(WndProc.OpenNow), hWnd(WndProc.hWnd), pWndProc(WndProc.pWndProc)
+		SWndProc(SWndProc& WndProc)
+			: goToFileDlg(WndProc.goToFileDlg), hWnd(WndProc.hWnd), pWndProc(WndProc.pWndProc)
 		{
 		}
 	};
@@ -716,8 +721,13 @@ public:
 	static SWndProc* GetWndProc(HWND hWnd);
 
 private:
-	static std::list<SWndProc*> WndProcs;
+	static std::list<SWndProc*> s_wndProcs;
 
-	static void RegisterWndProc(CGoToFileDlg& OpenNow, HWND hWnd, WNDPROC pWndProc);
-	static void UnregisterWndProc(CGoToFileDlg* pOpenNow);
+	static void RegisterWndProc(CGoToFileDlg& goToFileDlg, HWND hWnd, WNDPROC pWndProc);
+	static void UnregisterWndProc(CGoToFileDlg* pGoToFileDlg);
+
+
+private:
+	static bool CompareFiles(const SFilteredFile& file1, const SFilteredFile& file2);
+
 };

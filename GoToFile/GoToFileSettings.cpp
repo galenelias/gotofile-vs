@@ -30,33 +30,33 @@ void GoToFileSettings::Store()
 	int iDesktopHeight = GetSystemMetrics(SM_CYMAXTRACK);
 
 	RECT Rect;
-	if(GetWindowRect(OpenNow, &Rect))
+	if (GetWindowRect(goToFileDlg, &Rect))
 	{
 		Location.x = Rect.left;
 		Location.y = Rect.top;
 		Size.cx = Rect.right - Rect.left;
 		Size.cy = Rect.bottom - Rect.top;
 
-		if(Location.x > iDesktopWidth)
+		if (Location.x > iDesktopWidth)
 		{
-			Location.x = iDesktopWidth - OpenNow.GetInitialWidth();
+			Location.x = iDesktopWidth - goToFileDlg.GetInitialWidth();
 		}
-		if(Location.y > iDesktopHeight)
+		if (Location.y > iDesktopHeight)
 		{
-			Location.y = iDesktopHeight - OpenNow.GetInitialHeight();
+			Location.y = iDesktopHeight - goToFileDlg.GetInitialHeight();
 		}
-		if(Size.cx > iDesktopWidth)
+		if (Size.cx > iDesktopWidth)
 		{
 			Size.cx = iDesktopWidth;
 		}
-		if(Size.cy > iDesktopHeight)
+		if (Size.cy > iDesktopHeight)
 		{
 			Size.cy = iDesktopHeight;
 		}
 	}
 
-	CWindow FilesWindow = OpenNow.GetDlgItem(IDC_FILES);
-	if(FilesWindow)
+	CWindow FilesWindow = goToFileDlg.GetDlgItem(IDC_FILES);
+	if (FilesWindow)
 	{
 		LVCOLUMN Column;
 		memset(&Column, 0, sizeof(LVCOLUMN));
@@ -77,40 +77,40 @@ void GoToFileSettings::Store()
 
 	Project.clear();
 
-	CWindow ProjectsWindow = OpenNow.GetDlgItem(IDC_PROJECTS);
-	if(ProjectsWindow)
+	CWindow ProjectsWindow = goToFileDlg.GetDlgItem(IDC_PROJECTS);
+	if (ProjectsWindow)
 	{
 		LRESULT iItem = ::SendMessage(ProjectsWindow, CB_GETCURSEL, 0, 0);
-		if(static_cast<int>(iItem) >= 0 && static_cast<int>(iItem) < CGoToFileDlg::KNOWN_FILTER_COUNT)
+		if (static_cast<int>(iItem) >= 0 && static_cast<int>(iItem) < CGoToFileDlg::KNOWN_FILTER_COUNT)
 		{
-			Project = OpenNow.GetKnownFilterName(static_cast<CGoToFileDlg::EKnownFilter>(iItem));
+			Project = goToFileDlg.GetKnownFilterName(static_cast<CGoToFileDlg::EKnownFilter>(iItem));
 		}
 		else
 		{
-			const std::vector<LPWSTR>& ProjectNames = OpenNow.GetProjectNames();
-			if(static_cast<size_t>(iItem) >= CGoToFileDlg::KNOWN_FILTER_COUNT && static_cast<size_t>(iItem) < ProjectNames.size() + CGoToFileDlg::KNOWN_FILTER_COUNT)
+			const std::vector<LPWSTR>& projectNames = goToFileDlg.GetProjectNames();
+			if (static_cast<size_t>(iItem) >= CGoToFileDlg::KNOWN_FILTER_COUNT && static_cast<size_t>(iItem) < projectNames.size() + CGoToFileDlg::KNOWN_FILTER_COUNT)
 			{
 				iItem -= CGoToFileDlg::KNOWN_FILTER_COUNT;
-				Project = ProjectNames[iItem];
+				Project = projectNames[iItem];
 			}
 		}
 	}
 
 	Filter.clear();
 
-	CWindow FilterWindow = OpenNow.GetDlgItem(IDC_FILTER);
-	if(FilterWindow)
+	CWindow FilterWindow = goToFileDlg.GetDlgItem(IDC_FILTER);
+	if (FilterWindow)
 	{
 		BSTR lpText = NULL;
 		FilterWindow.GetWindowText(lpText);
-		if(lpText)
+		if (lpText)
 		{
 			Filter = lpText;
 		}
 	}
 
-	CWindow ViewCodeWindow = OpenNow.GetDlgItem(IDC_VIEWCODE);
-	if(ViewCodeWindow)
+	CWindow ViewCodeWindow = goToFileDlg.GetDlgItem(IDC_VIEWCODE);
+	if (ViewCodeWindow)
 	{
 		eViewKind = Button_GetCheck(ViewCodeWindow) ? VIEW_KIND_CODE : VIEW_KIND_PRIMARY;
 	}
@@ -125,10 +125,10 @@ void GoToFileSettings::Restore()
 	Rect.top = Location.y;
 	Rect.right = Rect.left + Size.cx;
 	Rect.bottom = Rect.top + Size.cy;
-	OpenNow.MoveWindow(&Rect);
+	goToFileDlg.MoveWindow(&Rect);
 
-	CWindow FilesWindow = OpenNow.GetDlgItem(IDC_FILES);
-	if(FilesWindow)
+	CWindow FilesWindow = goToFileDlg.GetDlgItem(IDC_FILES);
+	if (FilesWindow)
 	{
 		LVCOLUMN Column;
 		memset(&Column, 0, sizeof(LVCOLUMN));
@@ -147,27 +147,27 @@ void GoToFileSettings::Restore()
 		ListView_SetColumn(FilesWindow, 3, &Column);
 	}
 
-	if(!Project.empty())
+	if (!Project.empty())
 	{
-		CWindow ProjectsWindow = OpenNow.GetDlgItem(IDC_PROJECTS);
-		if(ProjectsWindow)
+		CWindow ProjectsWindow = goToFileDlg.GetDlgItem(IDC_PROJECTS);
+		if (ProjectsWindow)
 		{
-			for(int i = 0; i < CGoToFileDlg::KNOWN_FILTER_COUNT; i++)
+			for (int i = 0; i < CGoToFileDlg::KNOWN_FILTER_COUNT; i++)
 			{
-				if(i == CGoToFileDlg::KNOWN_FILTER_BROWSE && BrowsePath.empty())
+				if (i == CGoToFileDlg::KNOWN_FILTER_BROWSE && BrowsePath.empty())
 				{
 					continue;
 				}
-				if(_wcsicmp(Project.c_str(), OpenNow.GetKnownFilterName(static_cast<CGoToFileDlg::EKnownFilter>(i))) == 0)
+				if (_wcsicmp(Project.c_str(), goToFileDlg.GetKnownFilterName(static_cast<CGoToFileDlg::EKnownFilter>(i))) == 0)
 				{
 					::SendMessage(ProjectsWindow, CB_SETCURSEL, i, 0);
 					break;
 				}
 			}
-			const std::vector<LPWSTR>& ProjectNames = OpenNow.GetProjectNames();
-			for(size_t i = 0; i < ProjectNames.size(); i++)
+			const std::vector<LPWSTR>& projectNames = goToFileDlg.GetProjectNames();
+			for (size_t i = 0; i < projectNames.size(); i++)
 			{
-				if(_wcsicmp(Project.c_str(), ProjectNames[i]) == 0)
+				if (_wcsicmp(Project.c_str(), projectNames[i]) == 0)
 				{
 					::SendMessage(ProjectsWindow, CB_SETCURSEL, i + CGoToFileDlg::KNOWN_FILTER_COUNT, 0);
 					break;
@@ -176,18 +176,18 @@ void GoToFileSettings::Restore()
 		}
 	}
 
-	if(!Filter.empty())
+	if (!Filter.empty())
 	{
-		CWindow FilterWindow = OpenNow.GetDlgItem(IDC_FILTER);
-		if(FilterWindow)
+		CWindow FilterWindow = goToFileDlg.GetDlgItem(IDC_FILTER);
+		if (FilterWindow)
 		{
 			FilterWindow.SetWindowText(Filter.c_str());
 			FilterWindow.SendMessage(EM_SETSEL, 0, -1);
 		}
 	}
 
-	CWindow ViewCodeWindow = OpenNow.GetDlgItem(IDC_VIEWCODE);
-	if(ViewCodeWindow)
+	CWindow ViewCodeWindow = goToFileDlg.GetDlgItem(IDC_VIEWCODE);
+	if (ViewCodeWindow)
 	{
 		Button_SetCheck(ViewCodeWindow, eViewKind == VIEW_KIND_CODE);
 	}
@@ -199,8 +199,9 @@ void GoToFileSettings::Read()
 {
 	DWORD uiSize;
 
+	// TODO: Move to new registry hive
 	HKEY hOpenNow;
-	if(RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\Nem's Tools\\Open Now!", 0, KEY_READ, &hOpenNow) == ERROR_SUCCESS)
+	if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\Nem's Tools\\Open Now!", 0, KEY_READ, &hOpenNow) == ERROR_SUCCESS)
 	{
 		uiSize = sizeof(Location);
 		RegQueryValueEx(hOpenNow, L"Location", NULL, NULL, reinterpret_cast<LPBYTE>(&Location), &uiSize);
@@ -219,7 +220,7 @@ void GoToFileSettings::Read()
 		Project.clear();
 
 		uiSize = 0;
-		if(RegQueryValueEx(hOpenNow, L"Project", NULL, NULL, NULL, &uiSize) == ERROR_SUCCESS && uiSize > 0)
+		if (RegQueryValueEx(hOpenNow, L"Project", NULL, NULL, NULL, &uiSize) == ERROR_SUCCESS && uiSize > 0)
 		{
 			LPWSTR lpProject = new WCHAR[uiSize / sizeof(WCHAR)];
 			RegQueryValueEx(hOpenNow, L"Project", NULL, NULL, reinterpret_cast<LPBYTE>(lpProject), &uiSize);
@@ -231,7 +232,7 @@ void GoToFileSettings::Read()
 		Filter.clear();
 
 		uiSize = 0;
-		if(RegQueryValueEx(hOpenNow, L"Filter", NULL, NULL, NULL, &uiSize) == ERROR_SUCCESS && uiSize > 0)
+		if (RegQueryValueEx(hOpenNow, L"Filter", NULL, NULL, NULL, &uiSize) == ERROR_SUCCESS && uiSize > 0)
 		{
 			LPWSTR lpFilter = new WCHAR[uiSize / sizeof(WCHAR)];
 			RegQueryValueEx(hOpenNow, L"Filter", NULL, NULL, reinterpret_cast<LPBYTE>(lpFilter), &uiSize);
@@ -243,7 +244,7 @@ void GoToFileSettings::Read()
 		BrowsePath.clear();
 
 		uiSize = 0;
-		if(RegQueryValueEx(hOpenNow, L"BrowsePath", NULL, NULL, NULL, &uiSize) == ERROR_SUCCESS && uiSize > 0)
+		if (RegQueryValueEx(hOpenNow, L"BrowsePath", NULL, NULL, NULL, &uiSize) == ERROR_SUCCESS && uiSize > 0)
 		{
 			LPWSTR lpBrowsePath = new WCHAR[uiSize / sizeof(WCHAR)];
 			RegQueryValueEx(hOpenNow, L"BrowsePath", NULL, NULL, reinterpret_cast<LPBYTE>(lpBrowsePath), &uiSize);
@@ -260,10 +261,12 @@ void GoToFileSettings::Read()
 void GoToFileSettings::Write()
 {
 	HKEY hSoftware;
-	if(RegOpenKeyEx(HKEY_CURRENT_USER, L"Software", 0, KEY_WRITE, &hSoftware) == ERROR_SUCCESS)
+
+	// TODO: Move to new registry hive
+	if (RegOpenKeyEx(HKEY_CURRENT_USER, L"Software", 0, KEY_WRITE, &hSoftware) == ERROR_SUCCESS)
 	{
 		HKEY hOpenNow;
-		if(RegCreateKeyEx(hSoftware, L"Nem's Tools\\Open Now!", 0, NULL, REG_OPTION_NON_VOLATILE, KEY_WRITE, NULL, &hOpenNow, NULL) == ERROR_SUCCESS)
+		if (RegCreateKeyEx(hSoftware, L"Nem's Tools\\Open Now!", 0, NULL, REG_OPTION_NON_VOLATILE, KEY_WRITE, NULL, &hOpenNow, NULL) == ERROR_SUCCESS)
 		{
 			RegSetValueEx(hOpenNow, L"Location", 0, REG_BINARY, reinterpret_cast<const LPBYTE>(&Location), sizeof(Location));
 			RegSetValueEx(hOpenNow, L"Size", 0, REG_BINARY, reinterpret_cast<const LPBYTE>(&Size), sizeof(Size));

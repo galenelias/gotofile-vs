@@ -7,7 +7,7 @@
 
 // Windows Platform headers and control defines
 #define STRICT
-#define _WIN32_WINNT 0x0500 // Visual Studio requires Windows 2000 or better
+#define _WIN32_WINNT 0x0600 // Visual Studio requires Windows 2000 or better
 #define NOMINMAX // Windows Platform min and max macros cause problems for the Standard C++ Library
 #define WIN32_LEAN_AND_MEAN	// Exclude rarely-used stuff from the Windows Platform headers
 

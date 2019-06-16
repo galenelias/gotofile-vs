@@ -36,10 +36,10 @@ enum EViewKind : DWORD
 class GoToFileSettings
 {
 public:
-	class CGoToFileDlg& OpenNow;
+	class CGoToFileDlg& goToFileDlg;
 
-	GoToFileSettings(class CGoToFileDlg& OpenNow)
-		: OpenNow(OpenNow)
+	GoToFileSettings(class CGoToFileDlg& goToFileDlg)
+		: goToFileDlg(goToFileDlg)
 		, bRestoring(false)
 		, iFileNameWidth(150)
 		, iFilePathWidth(250)

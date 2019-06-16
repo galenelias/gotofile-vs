@@ -7,8 +7,6 @@
 void CGoToFilePackage::OnMyCommand(CommandHandler* /*pSender*/, DWORD /*flags*/, VARIANT* /*pIn*/, VARIANT* /*pOut*/)
 {
 	CComPtr<VxDTE::_DTE> spDTE;
-	CComBSTR bstrVer;
-
 	if (SUCCEEDED(GetVsSiteCache().QueryService(SID_SDTE, &spDTE)))
 	{
 		CGoToFileDlg goToFileDlg(spDTE);
