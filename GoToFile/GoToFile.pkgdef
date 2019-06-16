@@ -1,0 +1,24 @@
+﻿[$RootKey$\Packages\{1e71bec8-aa0c-4a7b-9379-41626a29c69e}]
+@="GoToFile Package"
+"InprocServer32"="$PackageFolder$\GoToFile.dll"
+"CompanyName"="GalenElias"
+"ProductName"="GoToFile"
+"ProductVersion"="1.0"
+
+[$RootKey$\Packages\{1e71bec8-aa0c-4a7b-9379-41626a29c69e}\SatelliteDll]
+"DllName"="GoToFileUI.dll"
+"Path"="$PackageFolder$"
+
+[$RootKey$\Menus]
+"{1e71bec8-aa0c-4a7b-9379-41626a29c69e}"=", 1000, 1"
+
+[$RootKey$\InstalledProducts\GoToFile]
+@="#100"
+"Package"="{1e71bec8-aa0c-4a7b-9379-41626a29c69e}"
+"ProductDetails"="#102"
+"LogoID"="#400"
+"PID"="1.0"
+"UseInterface"=dword:00000000
+
+
+

@@ -1,0 +1,7 @@
+﻿; GoToFile.def : Declares the module parameters.
+
+LIBRARY      "GoToFile.DLL"
+
+EXPORTS
+	DllCanUnloadNow            PRIVATE
+	DllGetClassObject          PRIVATE

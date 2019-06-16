@@ -1,0 +1,133 @@
+// Microsoft Visual C++ generated resource script.
+//
+#include "resource.h"
+
+#define APSTUDIO_READONLY_SYMBOLS
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 2 resource.
+//
+#include "windows.h"
+
+/////////////////////////////////////////////////////////////////////////////
+#undef APSTUDIO_READONLY_SYMBOLS
+
+/////////////////////////////////////////////////////////////////////////////
+// English (United States) resources
+
+#if !defined(AFX_RESOURCE_DLL) || defined(AFX_TARG_ENU)
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+
+#ifdef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// TEXTINCLUDE
+//
+
+1 TEXTINCLUDE 
+BEGIN
+    "resource.h\0"
+END
+
+2 TEXTINCLUDE 
+BEGIN
+    "#include ""windows.h""\r\n"
+    "\0"
+END
+
+3 TEXTINCLUDE 
+BEGIN
+    "1000  CTMENU       ""PackageCommands.cto""\r\n"
+    "#define VER_FILEDESCRIPTION_STR ""GoToFile Package Resources\\0""\r\n"
+    "#define VER_INTERNALNAME_STR ""GoToFileUI.dll\\0""\r\n"
+    "#define VER_ORIGINALFILENAME_STR ""GoToFileUI.dll\\0""\r\n"
+    "\0"
+END
+
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// PNG
+//
+
+IDB_IMAGES              PNG                     "Images.png"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Icon
+//
+
+// Icon with lowest ID value placed first to ensure application icon
+// remains consistent on all systems.
+IDI_PACKAGE_ICON        ICON                    "Package.ico"
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// Dialog
+//
+
+IDD_OPENNOW DIALOGEX 0, 0, 400, 300
+STYLE DS_SETFONT | DS_FIXEDSYS | DS_CENTER | WS_POPUP | WS_CAPTION | WS_SYSMENU | WS_THICKFRAME
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "&Open",IDOK,289,279,50,14
+    PUSHBUTTON      "&Cancel",IDCANCEL,343,279,50,14
+    CONTROL         "",IDC_PROJECTS,"ComboBoxEx32",CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP,7,7,386,174
+    CONTROL         "",IDC_FILES,"SysListView32",LVS_REPORT | LVS_SHOWSELALWAYS | LVS_ALIGNLEFT | LVS_OWNERDATA | WS_BORDER | WS_TABSTOP,7,25,386,232
+    EDITTEXT        IDC_FILTER,7,261,386,14,ES_AUTOHSCROLL
+    CONTROL         "View Co&de",IDC_VIEWCODE,"Button",BS_AUTOCHECKBOX | WS_TABSTOP,7,281,50,10
+    PUSHBUTTON      "&Explore",IDC_EXPLORE,235,279,50,14
+END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO
+BEGIN
+    IDD_OPENNOW, DIALOG
+    BEGIN
+    END
+END
+#endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// String Table
+//
+
+STRINGTABLE
+BEGIN
+    IDS_OFFICIALNAME        "GoToFile"
+    IDS_PRODUCTDETAILS      "Extension to enable quickly jumping to a file in the solution"
+    IDS_COMPANYNAME         "GalenElias"
+    IDS_VERSION             "1.0"
+END
+
+#endif    // English (United States) resources
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+#ifndef APSTUDIO_INVOKED
+/////////////////////////////////////////////////////////////////////////////
+//
+// Generated from the TEXTINCLUDE 3 resource.
+//
+1000  CTMENU       "PackageCommands.cto"
+#define VER_FILEDESCRIPTION_STR "GoToFile Package Resources\0"
+#define VER_INTERNALNAME_STR "GoToFileUI.dll\0"
+#define VER_ORIGINALFILENAME_STR "GoToFileUI.dll\0"
+
+/////////////////////////////////////////////////////////////////////////////
+#endif    // not APSTUDIO_INVOKED
+
