@@ -75,11 +75,17 @@
         <Parent guid="guidGoToFileCmdSet" id="MyMenuGroup" />
         <Icon guid="guidImages" id="bmpPic1" />
         <Strings>
-          <ButtonText>Go To File</ButtonText>
+          <ButtonText>Go To File!!</ButtonText>
         </Strings>
       </Button>
 
-
+      <Button guid="guidGoToFileCmdSet" id="cmdidGotoComplementary" priority="0x0101" type="Button">
+        <Parent guid="guidGoToFileCmdSet" id="MyMenuGroup" />
+        <Icon guid="guidImages" id="bmpPic2" />
+        <Strings>
+          <ButtonText>Go To Complementary</ButtonText>
+        </Strings>
+      </Button>
 
     </Buttons>
    
@@ -96,7 +102,13 @@
  
   </Commands>
 
+  <KeyBindings>
+    <KeyBinding guid="guidGoToFileCmdSet" id="cmdidGotoFile" editor="guidVSStd97" key1="O" mod1="Control Alt Shift"/>
+    <KeyBinding guid="guidGoToFileCmdSet" id="cmdidGotoComplementary" editor="guidTextEditor" mod1="Alt" key1="O" />
+  </KeyBindings>
 
-
+  <Symbols>
+    <GuidSymbol name="guidTextEditor" value="{8b382828-6202-11d1-8870-0000f87579d2}" />
+  </Symbols>
 
 </CommandTable>

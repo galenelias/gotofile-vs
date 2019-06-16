@@ -156,6 +156,7 @@
     <Midl Include="GoToFile.idl" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="GoToComplementary.cpp" />
     <ClCompile Include="GoToFileDlg.cpp" />
     <ClCompile Include="GoToFileSettings.cpp" />
     <ClCompile Include="Guids.cpp">
@@ -176,6 +177,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="CommonIncludes.h" />
+    <ClInclude Include="GoToComplementary.h" />
     <ClInclude Include="GoToFileDlg.h" />
     <ClInclude Include="GoToFileSettings.h" />
     <ClInclude Include="Guids.h" />

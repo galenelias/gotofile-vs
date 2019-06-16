@@ -3,8 +3,9 @@
 #include "dte.h"
 
 #include "GoToFileDlg.h"
+#include "GoToComplementary.h"
 
-void CGoToFilePackage::OnMyCommand(CommandHandler* /*pSender*/, DWORD /*flags*/, VARIANT* /*pIn*/, VARIANT* /*pOut*/)
+void CGoToFilePackage::OnGoToFileCommand(CommandHandler* /*pSender*/, DWORD /*flags*/, VARIANT* /*pIn*/, VARIANT* /*pOut*/)
 {
 	CComPtr<VxDTE::_DTE> spDTE;
 	if (SUCCEEDED(GetVsSiteCache().QueryService(SID_SDTE, &spDTE)))
@@ -19,20 +20,16 @@ void CGoToFilePackage::OnMyCommand(CommandHandler* /*pSender*/, DWORD /*flags*/,
 
 	// Get a pointer to the UI Shell service to show the message box.
 	//CComPtr<IVsUIShell> spUiShell = this->GetVsSiteCache().GetCachedService<IVsUIShell, SID_SVsUIShell>();
-
-	//LONG lResult;
-	//hr = spUiShell->ShowMessageBox(
-	//	0,
-	//	CLSID_NULL,
-	//	bstrTitle,
-	//	W2OLE(L"Hello World"),
-	//	NULL,
-	//	0,
-	//	OLEMSGBUTTON_OK,
-	//	OLEMSGDEFBUTTON_FIRST,
-	//	OLEMSGICON_INFO,
-	//	0,
-	//	&lResult);
-	//VSL_CHECKHRESULT(hr);
 }
+
+void CGoToFilePackage::OnGoToComplementaryCommand(CommandHandler* /*pSender*/, DWORD /*flags*/, VARIANT* /*pIn*/, VARIANT* /*pOut*/)
+{
+	CComPtr<VxDTE::_DTE> spDTE;
+	if (SUCCEEDED(GetVsSiteCache().QueryService(SID_SDTE, &spDTE)))
+	{
+		CGoToComplementary gotoComplementary(spDTE);
+		gotoComplementary.Execute();
+	}
+}
+
 

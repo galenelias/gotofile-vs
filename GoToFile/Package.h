@@ -76,12 +76,14 @@ public:
 // NOTE - the arguments passed to these macros can not have names longer then 30 characters
 // Definition of the commands handled by this package
 	VSL_BEGIN_COMMAND_MAP()
-		VSL_COMMAND_MAP_ENTRY(CLSID_GoToFileCmdSet, cmdidGotoFile, NULL, CommandHandler::ExecHandler(&OnMyCommand))
-	VSL_END_VSCOMMAND_MAP()
+		VSL_COMMAND_MAP_ENTRY(CLSID_GoToFileCmdSet, cmdidGotoFile, NULL, CommandHandler::ExecHandler(&OnGoToFileCommand))
+		VSL_COMMAND_MAP_ENTRY(CLSID_GoToFileCmdSet, cmdidGotoComplementary, NULL, CommandHandler::ExecHandler(&OnGoToComplementaryCommand))
+		VSL_END_VSCOMMAND_MAP()
 
 
 	// Command handler called when the user selects the "My Command" command.
-	void OnMyCommand(CommandHandler* /*pSender*/, DWORD /*flags*/, VARIANT* /*pIn*/, VARIANT* /*pOut*/);
+	void OnGoToFileCommand(CommandHandler* /*pSender*/, DWORD /*flags*/, VARIANT* /*pIn*/, VARIANT* /*pOut*/);
+	void OnGoToComplementaryCommand(CommandHandler* /*pSender*/, DWORD /*flags*/, VARIANT* /*pIn*/, VARIANT* /*pOut*/);
 
 };
 

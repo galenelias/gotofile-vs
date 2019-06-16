@@ -20,6 +20,7 @@
 // Command IDs
 
 #define cmdidGotoFile 0x100
+#define cmdidGotoComplementary 0x200
 
 
 
