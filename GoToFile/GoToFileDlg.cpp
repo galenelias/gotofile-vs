@@ -2,8 +2,8 @@
  *	GoToFile
 
  *	Copyright (C) 2009-2012 Ryan Gregg
-  *	Copyright (C) 2019 Galen Elias
-*
+ *	Copyright (C) 2019 Galen Elias
+ *
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
  *	the Free Software Foundation, either version 3 of the License, or

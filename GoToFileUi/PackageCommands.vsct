@@ -75,7 +75,7 @@
         <Parent guid="guidGoToFileCmdSet" id="MyMenuGroup" />
         <Icon guid="guidImages" id="bmpPic1" />
         <Strings>
-          <ButtonText>Go To File!!</ButtonText>
+          <ButtonText>Go To File</ButtonText>
         </Strings>
       </Button>
 

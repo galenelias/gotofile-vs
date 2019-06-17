@@ -2,6 +2,7 @@
  *	GoToFile
 
  *	Copyright (C) 2009-2012 Ryan Gregg
+ *	Copyright (C) 2019 Galen Elias
  *
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
@@ -15,9 +16,6 @@
  *
  *	You should have received a copy of the GNU General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- *	You may contact the author at ryansgregg@hotmail.com or visit
- *	http://nemesis.thewavelength.net/ for more information.
  */
 
 #include "stdafx.h"

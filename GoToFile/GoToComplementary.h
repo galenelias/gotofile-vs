@@ -1,6 +1,7 @@
 /*
  *	GoToFile
  *	Copyright (C) 2009-2012 Ryan Gregg
+ *	Copyright (C) 2019 Galen Elias
  *
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
@@ -14,9 +15,6 @@
  *
  *	You should have received a copy of the GNU General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- *	You may contact the author at ryansgregg@hotmail.com or visit
- *	http://nemesis.thewavelength.net/ for more information.
  */
 
 #pragma once
@@ -26,7 +24,8 @@
 class CGoToComplementary
 {
 public:
-	CGoToComplementary(CComPtr<VxDTE::_DTE> pDTE) : m_pDTE(pDTE)
+	CGoToComplementary(const CComPtr<VxDTE::_DTE>& spDTE)
+		: m_spDTE(spDTE)
 	{
 	}
 
@@ -42,12 +41,15 @@ private:
 		FRF_Default = FRF_KindPhysicalFile //| FRF_CodeFile
 	};
 
-	bool AddFileName(CComPtr<VxDTE::Document> pDocument, CComPtr<VxDTE::ProjectItem> pProjectItem, LPCWSTR lpFileName, std::vector<std::wstring>& FileNames, FileRestrictionFlags eFlags = FRF_Default);
+	bool AddFileName(VxDTE::Document* pDocument, VxDTE::ProjectItem* pProjectItem, LPCWSTR lpFileName, std::vector<std::wstring>& FileNames, FileRestrictionFlags eFlags = FRF_Default);
 
-	void GetProjectItemFiles(CComPtr<VxDTE::Document> pDocument, std::vector<std::wstring>& FileNames);
-	void GetProjectItemChildren(CComPtr<VxDTE::Document> pDocument, std::vector<std::wstring>& FileNames);
-	void GetProjectItemSiblings(CComPtr<VxDTE::Document> pDocument, std::vector<std::wstring>& FileNames);
-	void GetProjectFiles(CComPtr<VxDTE::Document> pDocument, std::vector<std::wstring>& FileNames);
+	void GetProjectItemFiles(VxDTE::Document* pDocument, std::vector<std::wstring>& FileNames);
+	void GetProjectItemChildren(VxDTE::Document* pDocument, std::vector<std::wstring>& FileNames);
+	void GetProjectItemSiblings(VxDTE::Document* pDocument, std::vector<std::wstring>& FileNames);
+	void GetProjectFiles(VxDTE::Document* pDocument, std::vector<std::wstring>& FileNames);
 
-	CComPtr<VxDTE::_DTE> m_pDTE;
+	void CacheStrings();
+
+	CComPtr<VxDTE::_DTE> m_spDTE;
+	WCHAR m_wzProjectItemKindPhysicalFile[MAX_PATH + 1];
 };

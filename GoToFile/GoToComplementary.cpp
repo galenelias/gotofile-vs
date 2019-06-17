@@ -1,6 +1,7 @@
 /*
  *	GoToFile
  *	Copyright (C) 2009-2012 Ryan Gregg
+ *	Copyright (C) 2019 Galen Elias
  *
  *	This program is free software: you can redistribute it and/or modify
  *	it under the terms of the GNU General Public License as published by
@@ -14,9 +15,6 @@
  *
  *	You should have received a copy of the GNU General Public License
  *	along with this program.  If not, see <http://www.gnu.org/licenses/>.
- *
- *	You may contact the author at ryansgregg@hotmail.com or visit
- *	http://nemesis.thewavelength.net/ for more information.
  */
 
 #include "stdafx.h"
@@ -24,38 +22,38 @@
 
 namespace
 {
-	CComPtr<VxDTE::ProjectItem> FindX(const CComPtr<VxDTE::ProjectItems>& pParentProjectItems, LPCWSTR lpFileName)
+	CComPtr<VxDTE::ProjectItem> FindProjectItem(const CComPtr<VxDTE::ProjectItems>& spParentProjectItems, LPCWSTR lpFileName)
 	{
 		LONG lCount = 0;
-		if (SUCCEEDED(pParentProjectItems->get_Count(&lCount)))
+		if (SUCCEEDED(spParentProjectItems->get_Count(&lCount)))
 		{
 			for (LONG i = 1; i <= lCount; i++)
 			{
-				CComPtr<VxDTE::ProjectItem> pProjectItem;
-				if (SUCCEEDED(pParentProjectItems->Item(CComVariant(i), &pProjectItem)) && pProjectItem)
+				CComPtr<VxDTE::ProjectItem> spProjectItem;
+				if (SUCCEEDED(spParentProjectItems->Item(CComVariant(i), &spProjectItem)) && spProjectItem)
 				{
 					short sCount = 0;
-					if (SUCCEEDED(pProjectItem->get_FileCount(&sCount)))
+					if (SUCCEEDED(spProjectItem->get_FileCount(&sCount)))
 					{
 						for (short i = 1; i <= sCount; i++)
 						{
-							BSTR lpFilePath = NULL;
-							if (SUCCEEDED(pProjectItem->get_FileNames(i, &lpFilePath)))
+							CComBSTR spFilePath;
+							if (SUCCEEDED(spProjectItem->get_FileNames(i, &spFilePath)))
 							{
-								if (_wcsicmp(lpFilePath, lpFileName) == 0)
+								if (_wcsicmp(spFilePath, lpFileName) == 0)
 								{
-									return pProjectItem;
+									return spProjectItem;
 								}
 							}
 						}
 					}
-					CComPtr<VxDTE::ProjectItems> pProjectItems;
-					if (SUCCEEDED(pProjectItem->get_ProjectItems(&pProjectItems)) && pProjectItems)
+					CComPtr<VxDTE::ProjectItems> spProjectItems;
+					if (SUCCEEDED(spProjectItem->get_ProjectItems(&spProjectItems)) && spProjectItems)
 					{
-						CComPtr<VxDTE::ProjectItem> pFoundProjectItem = FindX(pProjectItems, lpFileName);
-						if (pFoundProjectItem)
+						CComPtr<VxDTE::ProjectItem> spFoundProjectItem = FindProjectItem(spProjectItems, lpFileName);
+						if (spFoundProjectItem)
 						{
-							return pFoundProjectItem;
+							return spFoundProjectItem;
 						}
 					}
 				}
@@ -65,10 +63,17 @@ namespace
 	}
 }
 
+void CGoToComplementary::CacheStrings()
+{
+	MultiByteToWideChar(CP_ACP, 0, VxDTE::vsProjectItemKindPhysicalFile, -1, m_wzProjectItemKindPhysicalFile, MAX_PATH + 1);
+	m_wzProjectItemKindPhysicalFile[MAX_PATH] = '\0';
+}
+
+
 bool CGoToComplementary::Query() const
 {
-	CComPtr<VxDTE::Document> pDocument;
-	if (SUCCEEDED(m_pDTE->get_ActiveDocument(&pDocument)) && pDocument)
+	CComPtr<VxDTE::Document> spDocument;
+	if (SUCCEEDED(m_spDTE->get_ActiveDocument(&spDocument)) && spDocument)
 	{
 		return true;
 	}
@@ -77,55 +82,57 @@ bool CGoToComplementary::Query() const
 
 bool CGoToComplementary::Execute()
 {
-	CComPtr<VxDTE::Document> pDocument;
-	if (SUCCEEDED(m_pDTE->get_ActiveDocument(&pDocument)) && pDocument)
+	CacheStrings();
+
+	CComPtr<VxDTE::Document> spDocument;
+	if (SUCCEEDED(m_spDTE->get_ActiveDocument(&spDocument)) && spDocument)
 	{
-		BSTR lpFullName = NULL;
-		if (SUCCEEDED(pDocument->get_FullName(&lpFullName)))
+		CComBSTR spFullName;
+		if (SUCCEEDED(spDocument->get_FullName(&spFullName)))
 		{
-			std::vector<std::wstring> FileNames;
+			std::vector<std::wstring> fileNames;
 
-			if (FileNames.empty())
+			if (fileNames.empty())
 			{
-				GetProjectItemFiles(pDocument, FileNames);
+				GetProjectItemFiles(spDocument, fileNames);
 			}
 
-			if (FileNames.empty())
+			if (fileNames.empty())
 			{
-				GetProjectItemChildren(pDocument, FileNames);
+				GetProjectItemChildren(spDocument, fileNames);
 			}
 
-			if (FileNames.empty())
+			if (fileNames.empty())
 			{
-				GetProjectItemSiblings(pDocument, FileNames);
+				GetProjectItemSiblings(spDocument, fileNames);
 			}
 
-			if (FileNames.empty())
+			if (fileNames.empty())
 			{
-				GetProjectFiles(pDocument, FileNames);
+				GetProjectFiles(spDocument, fileNames);
 			}
 
-			if (!FileNames.empty())
+			if (!fileNames.empty())
 			{
 				size_t uiIndex = 0;
-				for (size_t i = 0; i < FileNames.size(); i++)
+				for (size_t i = 0; i < fileNames.size(); i++)
 				{
-					if (_wcsicmp(lpFullName, FileNames[i].c_str()) == 0)
+					if (_wcsicmp(spFullName, fileNames[i].c_str()) == 0)
 					{
-						uiIndex = (i + 1) % FileNames.size();
+						uiIndex = (i + 1) % fileNames.size();
 						break;
 					}
 				}
 
-				CComPtr<VxDTE::ItemOperations> pItemOperations;
-				if (SUCCEEDED(m_pDTE->get_ItemOperations(&pItemOperations)) && pItemOperations)
+				CComPtr<VxDTE::ItemOperations> spItemOperations;
+				if (SUCCEEDED(m_spDTE->get_ItemOperations(&spItemOperations)) && spItemOperations)
 				{
 					WCHAR lpViewKindTextView[MAX_PATH + 1];
 					MultiByteToWideChar(CP_ACP, 0, VxDTE::vsViewKindTextView, -1, lpViewKindTextView, MAX_PATH + 1);
 					lpViewKindTextView[MAX_PATH] = '\0';
 
-					CComPtr<VxDTE::Window> pWindow;
-					return SUCCEEDED(pItemOperations->OpenFile(const_cast<LPWSTR>(FileNames[uiIndex].c_str()), lpViewKindTextView, &pWindow));
+					CComPtr<VxDTE::Window> spWindow;
+					return SUCCEEDED(spItemOperations->OpenFile(const_cast<LPWSTR>(fileNames[uiIndex].c_str()), lpViewKindTextView, &spWindow));
 				}
 			}
 		}
@@ -133,36 +140,32 @@ bool CGoToComplementary::Execute()
 	return false;
 }
 
-bool CGoToComplementary::AddFileName(CComPtr<VxDTE::Document> pDocument, CComPtr<VxDTE::ProjectItem> pProjectItem, LPCWSTR lpFileName, std::vector<std::wstring>& FileNames, FileRestrictionFlags eFlags)
+bool CGoToComplementary::AddFileName(VxDTE::Document* pDocument, VxDTE::ProjectItem* pProjectItem, LPCWSTR lpFileName, std::vector<std::wstring>& fileNames, FileRestrictionFlags eFlags)
 {
-	BSTR lpFullName = NULL;
-	if (SUCCEEDED(pDocument->get_FullName(&lpFullName)))
+	CComBSTR spFullName;
+	if (SUCCEEDED(pDocument->get_FullName(&spFullName)))
 	{
-		BSTR lpName = wcsrchr(lpFullName, L'\\');
+		LPCWSTR lpName = wcsrchr(spFullName, L'\\');
 		if (lpName == NULL)
 		{
-			lpName = lpFullName;
+			lpName = spFullName;
 		}
 		else
 		{
 			lpName++;
 		}
 
-		BSTR lpExtension = wcschr(lpName, L'.');
-		if (lpExtension != NULL && _wcsnicmp(lpFullName, lpFileName, lpExtension - lpFullName + 1) == 0)
+		LPCWSTR lpExtension = wcschr(lpName, L'.');
+		if (lpExtension != NULL && _wcsnicmp(spFullName, lpFileName, lpExtension - spFullName + 1) == 0)
 		{
 			if (pProjectItem)
 			{
 				if ((eFlags & FRF_KindPhysicalFile) != FRF_None)
 				{
-					BSTR lpKind = NULL;
-					if (SUCCEEDED(pProjectItem->get_Kind(&lpKind)) && lpKind)
+					CComBSTR spKind;
+					if (SUCCEEDED(pProjectItem->get_Kind(&spKind)) && spKind)
 					{
-						WCHAR lpProjectItemKindPhysicalFile[MAX_PATH + 1];
-						MultiByteToWideChar(CP_ACP, 0, VxDTE::vsProjectItemKindPhysicalFile, -1, lpProjectItemKindPhysicalFile, MAX_PATH + 1);
-						lpProjectItemKindPhysicalFile[MAX_PATH] = '\0';
-
-						if (_wcsicmp(lpKind, lpProjectItemKindPhysicalFile) != 0)
+						if (_wcsicmp(spKind, m_wzProjectItemKindPhysicalFile) != 0)
 						{
 							return false;
 						}
@@ -170,180 +173,180 @@ bool CGoToComplementary::AddFileName(CComPtr<VxDTE::Document> pDocument, CComPtr
 				}
 				if ((eFlags & FRF_CodeFile) != FRF_None)
 				{
-					CComPtr<VxDTE::FileCodeModel> pFileCodeModel;
-					if (!SUCCEEDED(pProjectItem->get_FileCodeModel(&pFileCodeModel)) || !pFileCodeModel)
+					CComPtr<VxDTE::FileCodeModel> spFileCodeModel;
+					if (!SUCCEEDED(pProjectItem->get_FileCodeModel(&spFileCodeModel)) || !spFileCodeModel)
 					{
 						return false;
 					}
 				}
 			}
-			FileNames.push_back(lpFileName);
+			fileNames.emplace_back(lpFileName);
 			return true;
 		}
 	}
 	return false;
 }
 
-void CGoToComplementary::GetProjectItemFiles(CComPtr<VxDTE::Document> pDocument, std::vector<std::wstring>& FileNames)
+void CGoToComplementary::GetProjectItemFiles(VxDTE::Document* pDocument, std::vector<std::wstring>& fileNames)
 {
-	CComPtr<VxDTE::ProjectItem> pProjectItem;
-	if (SUCCEEDED(pDocument->get_ProjectItem(&pProjectItem)) && pProjectItem)
+	CComPtr<VxDTE::ProjectItem> spProjectItem;
+	if (SUCCEEDED(pDocument->get_ProjectItem(&spProjectItem)) && spProjectItem)
 	{
 		short sCount = 0;
-		if (SUCCEEDED(pProjectItem->get_FileCount(&sCount)) && sCount > 1)
+		if (SUCCEEDED(spProjectItem->get_FileCount(&sCount)) && sCount > 1)
 		{
 			for (short i = 1; i <= sCount; i++)
 			{
-				BSTR lpFilePath = NULL;
-				if (SUCCEEDED(pProjectItem->get_FileNames(i, &lpFilePath)))
+				CComBSTR spFilePath;
+				if (SUCCEEDED(spProjectItem->get_FileNames(i, &spFilePath)))
 				{
-					AddFileName(pDocument, pProjectItem, lpFilePath, FileNames);
+					AddFileName(pDocument, spProjectItem, spFilePath, fileNames);
 				}
 			}
 		}
 	}
 }
 
-void CGoToComplementary::GetProjectItemChildren(CComPtr<VxDTE::Document> pDocument, std::vector<std::wstring>& FileNames)
+void CGoToComplementary::GetProjectItemChildren(VxDTE::Document* pDocument, std::vector<std::wstring>& fileNames)
 {
-	CComPtr<VxDTE::ProjectItem> pProjectItem;
-	if (SUCCEEDED(pDocument->get_ProjectItem(&pProjectItem)) && pProjectItem)
+	CComPtr<VxDTE::ProjectItem> spProjectItem;
+	if (SUCCEEDED(pDocument->get_ProjectItem(&spProjectItem)) && spProjectItem)
 	{
-		CComPtr<VxDTE::ProjectItems> pParentProjectItems;
-		if (FileNames.empty())
+		CComPtr<VxDTE::ProjectItems> spParentProjectItems;
+		if (fileNames.empty())
 		{
-			pParentProjectItems = NULL;
-			if (SUCCEEDED(pProjectItem->get_ProjectItems(&pParentProjectItems)) && pParentProjectItems)
+			if (SUCCEEDED(spProjectItem->get_ProjectItems(&spParentProjectItems)) && spParentProjectItems)
 			{
 				LONG lCount = 0;
-				if (SUCCEEDED(pParentProjectItems->get_Count(&lCount)) && lCount > 0)
+				if (SUCCEEDED(spParentProjectItems->get_Count(&lCount)) && lCount > 0)
 				{
 					short sCount = 0;
-					if (SUCCEEDED(pProjectItem->get_FileCount(&sCount)) && sCount == 1)
+					if (SUCCEEDED(spProjectItem->get_FileCount(&sCount)) && sCount == 1)
 					{
-						BSTR lpFilePath = NULL;
-						if (SUCCEEDED(pProjectItem->get_FileNames(1, &lpFilePath)))
+						CComBSTR spFilePath;
+						if (SUCCEEDED(spProjectItem->get_FileNames(1, &spFilePath)))
 						{
-							AddFileName(pDocument, pProjectItem, lpFilePath, FileNames, static_cast<FileRestrictionFlags>(FRF_Default & ~FRF_CodeFile));
+							AddFileName(pDocument, spProjectItem, spFilePath, fileNames, static_cast<FileRestrictionFlags>(FRF_Default & ~FRF_CodeFile));
 						}
 					}
 				}
 			}
 		}
-		if (FileNames.empty())
+		if (fileNames.empty())
 		{
-			pParentProjectItems = NULL;
-			if (SUCCEEDED(pProjectItem->get_Collection(&pParentProjectItems)) && pParentProjectItems)
+			spParentProjectItems = NULL;
+			if (SUCCEEDED(spProjectItem->get_Collection(&spParentProjectItems)) && spParentProjectItems)
 			{
-				CComPtr<IDispatch> pParent;
-				if (SUCCEEDED(pParentProjectItems->get_Parent(&pParent)))
+				CComPtr<IDispatch> spParent;
+				if (SUCCEEDED(spParentProjectItems->get_Parent(&spParent)))
 				{
-					CComPtr<VxDTE::ProjectItem> pParentProjectItem;
-					pParentProjectItem = pParent;
-					if (pParentProjectItem)
+					CComPtr<VxDTE::ProjectItem> spParentProjectItem;
+					spParentProjectItem = spParent;
+					if (spParentProjectItem)
 					{
 						short sCount = 0;
-						if (SUCCEEDED(pParentProjectItem->get_FileCount(&sCount)) && sCount == 1)
+						if (SUCCEEDED(spParentProjectItem->get_FileCount(&sCount)) && sCount == 1)
 						{
-							BSTR lpFilePath = NULL;
-							if (SUCCEEDED(pParentProjectItem->get_FileNames(1, &lpFilePath)))
+							CComBSTR spFilePath;
+							if (SUCCEEDED(spParentProjectItem->get_FileNames(1, &spFilePath)))
 							{
-								AddFileName(pDocument, pParentProjectItem, lpFilePath, FileNames, static_cast<FileRestrictionFlags>(FRF_Default & ~FRF_CodeFile));
+								AddFileName(pDocument, spParentProjectItem, spFilePath, fileNames, static_cast<FileRestrictionFlags>(FRF_Default & ~FRF_CodeFile));
 							}
 						}
 					}
 				}
 			}
 		}
-		if (FileNames.size() == 1)
+		if (fileNames.size() == 1)
 		{
 			LONG lCount = 0;
-			if (SUCCEEDED(pParentProjectItems->get_Count(&lCount)))
+			if (SUCCEEDED(spParentProjectItems->get_Count(&lCount)))
 			{
 				for (LONG i = 1; i <= lCount; i++)
 				{
-					CComPtr<VxDTE::ProjectItem> pSiblingProjectItem;
-					if (SUCCEEDED(pParentProjectItems->Item(CComVariant(i), &pSiblingProjectItem)) && pSiblingProjectItem)
+					CComPtr<VxDTE::ProjectItem> spSiblingProjectItem;
+					if (SUCCEEDED(spParentProjectItems->Item(CComVariant(i), &spSiblingProjectItem)) && spSiblingProjectItem)
 					{
 						short sCount = 0;
-						if (SUCCEEDED(pSiblingProjectItem->get_FileCount(&sCount)) && sCount == 1)
+						if (SUCCEEDED(spSiblingProjectItem->get_FileCount(&sCount)) && sCount == 1)
 						{
-							BSTR lpFilePath = NULL;
-							if (SUCCEEDED(pSiblingProjectItem->get_FileNames(1, &lpFilePath)))
+							CComBSTR spFilePath;
+							if (SUCCEEDED(spSiblingProjectItem->get_FileNames(1, &spFilePath)))
 							{
-								AddFileName(pDocument, pSiblingProjectItem, lpFilePath, FileNames, static_cast<FileRestrictionFlags>(FRF_Default & ~FRF_CodeFile));
+								AddFileName(pDocument, spSiblingProjectItem, spFilePath, fileNames, static_cast<FileRestrictionFlags>(FRF_Default & ~FRF_CodeFile));
 							}
 						}
 					}
 				}
-				if (FileNames.size() == 1)
+				if (fileNames.size() == 1)
 				{
-					FileNames.clear();
+					fileNames.clear();
 				}
 			}
 		}
 	}
 }
 
-void CGoToComplementary::GetProjectItemSiblings(CComPtr<VxDTE::Document> pDocument, std::vector<std::wstring>& FileNames)
+void CGoToComplementary::GetProjectItemSiblings(VxDTE::Document* pDocument, std::vector<std::wstring>& fileNames)
 {
-	CComPtr<VxDTE::ProjectItem> pProjectItem;
-	if (SUCCEEDED(pDocument->get_ProjectItem(&pProjectItem)) && pProjectItem)
+	CComPtr<VxDTE::ProjectItem> spProjectItem;
+	if (SUCCEEDED(pDocument->get_ProjectItem(&spProjectItem)) && spProjectItem)
 	{
-		CComPtr<VxDTE::ProjectItems> pParentProjectItems;
-		if (SUCCEEDED(pProjectItem->get_Collection(&pParentProjectItems)) && pParentProjectItems)
+		CComPtr<VxDTE::ProjectItems> spParentProjectItems;
+		if (SUCCEEDED(spProjectItem->get_Collection(&spParentProjectItems)) && spParentProjectItems)
 		{
 			LONG lCount = 0;
-			if (SUCCEEDED(pParentProjectItems->get_Count(&lCount)))
+			if (SUCCEEDED(spParentProjectItems->get_Count(&lCount)))
 			{
 				bool bAddedProjectItem = false;
 				for (LONG i = 1; i <= lCount; i++)
 				{
-					CComPtr<VxDTE::ProjectItem> pSiblingProjectItem;
-					if (SUCCEEDED(pParentProjectItems->Item(CComVariant(i), &pSiblingProjectItem)) && pSiblingProjectItem)
+					CComPtr<VxDTE::ProjectItem> spSiblingProjectItem;
+					if (SUCCEEDED(spParentProjectItems->Item(CComVariant(i), &spSiblingProjectItem)) && spSiblingProjectItem)
 					{
 						short sCount = 0;
-						if (SUCCEEDED(pSiblingProjectItem->get_FileCount(&sCount)) && sCount == 1)
+						if (SUCCEEDED(spSiblingProjectItem->get_FileCount(&sCount)) && sCount == 1)
 						{
-							BSTR lpFilePath = NULL;
-							if (SUCCEEDED(pSiblingProjectItem->get_FileNames(1, &lpFilePath)))
+							CComBSTR spFilePath;
+							if (SUCCEEDED(spSiblingProjectItem->get_FileNames(1, &spFilePath)))
 							{
-								if (AddFileName(pDocument, pSiblingProjectItem, lpFilePath, FileNames))
+								if (AddFileName(pDocument, spSiblingProjectItem, spFilePath, fileNames))
 								{
-									bAddedProjectItem |= pProjectItem == pSiblingProjectItem;
+									bAddedProjectItem |= spProjectItem == spSiblingProjectItem;
 								}
 							}
 						}
 					}
 				}
-				if (bAddedProjectItem && FileNames.size() == 1)
+
+				if (bAddedProjectItem && fileNames.size() == 1)
 				{
-					FileNames.clear();
+					fileNames.clear();
 				}
 			}
 		}
 	}
 }
 
-void CGoToComplementary::GetProjectFiles(CComPtr<VxDTE::Document> pDocument, std::vector<std::wstring>& FileNames)
+void CGoToComplementary::GetProjectFiles(VxDTE::Document* pDocument, std::vector<std::wstring>& fileNames)
 {
-	BSTR lpFullName = NULL;
-	if (SUCCEEDED(pDocument->get_FullName(&lpFullName)))
+	CComBSTR spFullName;
+	if (SUCCEEDED(pDocument->get_FullName(&spFullName)))
 	{
-		BSTR lpName = wcsrchr(lpFullName, L'\\');
+		LPCWSTR lpName = wcsrchr(spFullName, L'\\');
 		if (lpName == NULL)
 		{
-			lpName = lpFullName;
+			lpName = spFullName;
 		}
 		else
 		{
 			lpName++;
 		}
 
-		BSTR lpExtension = wcschr(lpName, L'.');
+		LPCWSTR lpExtension = wcschr(lpName, L'.');
 		if (lpExtension != NULL)
 		{
-			std::wstring Search(lpFullName, lpExtension - lpFullName + 1);
+			std::wstring Search(spFullName, lpExtension - spFullName + 1);
 			Search += L'*';
 
 			WIN32_FIND_DATA FindData;
@@ -357,35 +360,36 @@ void CGoToComplementary::GetProjectFiles(CComPtr<VxDTE::Document> pDocument, std
 						LPCWSTR lpFindFileExtension = wcschr(FindData.cFileName, L'.');
 						if (lpFindFileExtension != NULL)
 						{
-							std::wstring FindFileName(lpFullName, lpExtension - lpFullName);
-							FindFileName += lpFindFileExtension;
+							std::wstring findFileName(spFullName, lpExtension - spFullName);
+							findFileName += lpFindFileExtension;
 
 							bool bHasProject = false;
-							CComPtr<VxDTE::ProjectItem> pProjectItem;
-							if (SUCCEEDED(pDocument->get_ProjectItem(&pProjectItem)) && pProjectItem)
+							CComPtr<VxDTE::ProjectItem> spProjectItem;
+							if (SUCCEEDED(pDocument->get_ProjectItem(&spProjectItem)) && spProjectItem)
 							{
-								CComPtr<VxDTE::Project> pProject;
-								if (SUCCEEDED(pProjectItem->get_ContainingProject(&pProject)) && pProject)
+								CComPtr<VxDTE::Project> spProject;
+								if (SUCCEEDED(spProjectItem->get_ContainingProject(&spProject)) && spProject)
 								{
-									BSTR lpFullProjectName = NULL;
-									if (SUCCEEDED(pProject->get_FullName(&lpFullProjectName)) && lpFullProjectName != NULL && *lpFullProjectName != L'\0')
+									CComBSTR spFullProjectName = NULL;
+									if (SUCCEEDED(spProject->get_FullName(&spFullProjectName)) && spFullProjectName != NULL && *spFullProjectName != L'\0')
 									{
-										CComPtr<VxDTE::ProjectItems> pParentProjectItems;
-										if (SUCCEEDED(pProject->get_ProjectItems(&pParentProjectItems)) && pParentProjectItems)
+										CComPtr<VxDTE::ProjectItems> spParentProjectItems;
+										if (SUCCEEDED(spProject->get_ProjectItems(&spParentProjectItems)) && spParentProjectItems)
 										{
-											CComPtr<VxDTE::ProjectItem> pProjectItem = FindX(pParentProjectItems, FindFileName.c_str());
-											if (pProjectItem)
+											CComPtr<VxDTE::ProjectItem> spProjectItem = FindProjectItem(spParentProjectItems, findFileName.c_str());
+											if (spProjectItem)
 											{
-												AddFileName(pDocument, pProjectItem, FindFileName.c_str(), FileNames);
+												AddFileName(pDocument, spProjectItem, findFileName.c_str(), fileNames);
 											}
 											bHasProject = true;
 										}
 									}
 								}
 							}
+
 							if (!bHasProject)
 							{
-								FileNames.push_back(FindFileName);
+								fileNames.push_back(std::move(findFileName));
 							}
 						}
 					}
