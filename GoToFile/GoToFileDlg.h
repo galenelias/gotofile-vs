@@ -699,7 +699,7 @@ private:
 		std::list<const SFile*> SelectedFiles;
 	};
 
-public:
+private:
 	struct SWndProc
 	{
 		CGoToFileDlg& goToFileDlg;
@@ -710,21 +710,13 @@ public:
 			: goToFileDlg(goToFileDlg), hWnd(hWnd), pWndProc(pWndProc)
 		{
 		}
-
-		SWndProc(SWndProc& WndProc)
-			: goToFileDlg(WndProc.goToFileDlg), hWnd(WndProc.hWnd), pWndProc(WndProc.pWndProc)
-		{
-		}
 	};
 
+	static std::list<SWndProc> s_wndProcs;
+
 	static SWndProc* GetWndProc(HWND hWnd);
-
-private:
-	static std::list<SWndProc*> s_wndProcs;
-
 	static void RegisterWndProc(CGoToFileDlg& goToFileDlg, HWND hWnd, WNDPROC pWndProc);
 	static void UnregisterWndProc(CGoToFileDlg* pGoToFileDlg);
-
 
 private:
 	static bool CompareFiles(const SFilteredFile& file1, const SFilteredFile& file2);

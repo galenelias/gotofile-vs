@@ -163,7 +163,7 @@ void CGoToFileDlg::CreateFileList(SName< std::vector<LPWSTR> >& ProjectName, SNa
 							const size_t cchFilePath = wcslen(spFilePath) + 1;
 							LPWSTR lpFilePathCopy = new WCHAR[cchFilePath];
 							wcscpy_s(lpFilePathCopy, cchFilePath, spFilePath);
-							m_files.push_back(SFile(lpFilePathCopy, ProjectName.GetName(), ParentProjectPath.GetName()));
+							m_files.emplace_back(lpFilePathCopy, ProjectName.GetName(), ParentProjectPath.GetName());
 						}
 					}
 					else
@@ -195,21 +195,21 @@ void CGoToFileDlg::CreateFileList(SName< std::vector<LPWSTR> >& ProjectName, SNa
 
 void CGoToFileDlg::DestroyFileList()
 {
-	for (std::vector<LPWSTR>::iterator i = m_projectNames.begin(); i != m_projectNames.end(); ++i)
+	for (LPWSTR pName : m_projectNames)
 	{
-		delete []*i;
+		delete []pName;
 	}
 	m_projectNames.clear();
 
-	for (std::list<LPWSTR>::iterator i = m_projectPaths.begin(); i != m_projectPaths.end(); ++i)
+	for (LPWSTR pPath : m_projectPaths)
 	{
-		delete []*i;
+		delete []pPath;
 	}
 	m_projectPaths.clear();
 
-	for (std::list<SFile>::iterator i = m_files.begin(); i != m_files.end(); ++i)
+	for (SFile& file : m_files)
 	{
-		delete [](*i).lpFilePath;
+		delete []file.lpFilePath;
 	}
 	m_files.clear();
 }
@@ -270,7 +270,7 @@ void CGoToFileDlg::CreateBrowseFileList(LPCWSTR lpPath)
 					}
 					else
 					{
-						m_browseFiles.push_back(SFile(lpFileName, L"<Browse>", lpFileName));
+						m_browseFiles.emplace_back(lpFileName, L"<Browse>", lpFileName);
 					}
 				}
 			}
@@ -281,9 +281,9 @@ void CGoToFileDlg::CreateBrowseFileList(LPCWSTR lpPath)
 
 void CGoToFileDlg::DestroyBrowseFileList()
 {
-	for (std::list<SFile>::iterator i = m_browseFiles.begin(); i != m_browseFiles.end(); ++i)
+	for (SFile& file : m_browseFiles)
 	{
-		delete [](*i).lpFilePath;
+		delete []file.lpFilePath;
 	}
 	m_browseFiles.clear();
 }
@@ -423,39 +423,35 @@ void CGoToFileDlg::RefreshFileList()
 
 	unsigned int uiProjectIndex = GetSelectedProject();
 	LPCWSTR lpProjectName = uiProjectIndex >= static_cast<unsigned int>(KNOWN_FILTER_COUNT) && uiProjectIndex < static_cast<unsigned int>(KNOWN_FILTER_COUNT) + m_projectNames.size() ? m_projectNames[uiProjectIndex - static_cast<unsigned int>(KNOWN_FILTER_COUNT)] : nullptr;
-	const std::list<SFile>& FilesToFilter = uiProjectIndex == static_cast<unsigned int>(KNOWN_FILTER_BROWSE) ? m_browseFiles : m_files;
+	const std::list<SFile>& filesToFilter = uiProjectIndex == static_cast<unsigned int>(KNOWN_FILTER_BROWSE) ? m_browseFiles : m_files;
 
 	LPWSTR lpFilterStringTable = nullptr;
-	std::list<SFilter> Filters;
-	CreateFilterList(lpFilterStringTable, Filters);
+	std::list<SFilter> filters;
+	CreateFilterList(lpFilterStringTable, filters);
 
 	m_filteredFiles.clear();
-	m_filteredFiles.reserve(FilesToFilter.size());
+	m_filteredFiles.reserve(filesToFilter.size());
 
 	unsigned int uiHasTerms = FILTER_TERM_NONE;
-	for (std::list<SFilter>::const_iterator j = Filters.begin(); j != Filters.end(); ++j)
+	for (const SFilter& filter : filters)
 	{
-		uiHasTerms |= (*j).GetFilterTerm();
+		uiHasTerms |= filter.GetFilterTerm();
 	}
 
 	int iBestMatch = -1;
-	for (std::list<SFile>::const_iterator i = FilesToFilter.begin(); i != FilesToFilter.end(); ++i)
+	for (const SFile& file : filesToFilter)
 	{
-		const SFile& File = *i;
-
-		if (lpProjectName != nullptr && File.lpProjectName != lpProjectName)
+		if (lpProjectName != nullptr && file.lpProjectName != lpProjectName)
 		{
 			continue;
 		}
 
 		int iMatch = -1;
 		unsigned int uiMatchTerms = uiHasTerms & FILTER_TERM_AND_MASK;
-		for (std::list<SFilter>::iterator j = Filters.begin(); j != Filters.end(); ++j)
+		for (const SFilter& filter : filters)
 		{
-			const SFilter& Filter = *j;
-
-			int iTest = Filter.Match(File);
-			unsigned int uiFilterTerm = Filter.GetFilterTerm();
+			const int iTest = filter.Match(file);
+			const unsigned int uiFilterTerm = filter.GetFilterTerm();
 			if (iTest >= 0)
 			{
 				if (iMatch < 0 || iTest < iMatch)
@@ -482,11 +478,11 @@ void CGoToFileDlg::RefreshFileList()
 			{
 				iBestMatch = iMatch;
 			}
-			m_filteredFiles.push_back(SFilteredFile(&File, iMatch));
+			m_filteredFiles.emplace_back(&file, iMatch);
 		}
 	}
 
-	DestroyFilterList(lpFilterStringTable, Filters);
+	DestroyFilterList(lpFilterStringTable, filters);
 
 	SortFileList();
 
@@ -498,10 +494,8 @@ void CGoToFileDlg::RefreshFileList()
 	Item.pszText = LPSTR_TEXTCALLBACK;
 	int iCount = ListView_GetItemCount(hFiles);
 	ListView_SetItemCountEx(hFiles, m_filteredFiles.size(), 0);
-	for (std::vector<SFilteredFile>::iterator i = m_filteredFiles.begin(); i != m_filteredFiles.end(); ++i)
+	for (const SFilteredFile& filteredFile : m_filteredFiles)
 	{
-		const SFilteredFile& FilteredFile = *i;
-
 		Item.iItem = iItem++;
 
 		if (Item.iItem >= iCount)
@@ -519,20 +513,20 @@ void CGoToFileDlg::RefreshFileList()
 			ListView_SetItem(hFiles, &Item);
 		}
 
-		if (iBestItem == -1 || FilteredFile.iMatch < iBestMatch)
+		if (iBestItem == -1 || filteredFile.iMatch < iBestMatch)
 		{
 			iBestItem = Item.iItem;
-			iBestMatch = FilteredFile.iMatch;
+			iBestMatch = filteredFile.iMatch;
 		}
 	}
 
 	Select(iBestItem);
 
-	const WCHAR* lpWindowCaption = L"Open File(s) in Solution";
+	const WCHAR* lpWindowCaption = L"Go To File(s) in Solution";
 	if (m_files.size() > 0)
 	{
-		WCHAR lpWindowText[64];
-		swprintf_s(lpWindowText, 64, L"%s (%u of %u)", lpWindowCaption, m_filteredFiles.size(), m_files.size());
+		WCHAR lpWindowText[128];
+		swprintf_s(lpWindowText, _countof(lpWindowText), L"%s (%u of %u)", lpWindowCaption, m_filteredFiles.size(), m_files.size());
 		SetWindowText(lpWindowText);
 	}
 	else
@@ -594,9 +588,9 @@ void CGoToFileDlg::ExploreSelectedFiles()
 			UINT uiCount = 0;
 
 			std::vector<LPITEMIDLIST> itemIds(folderAndSelectedFiles.SelectedFiles.size());
-			for (std::list<const SFile*>::iterator j = folderAndSelectedFiles.SelectedFiles.begin(); j != folderAndSelectedFiles.SelectedFiles.end(); ++j)
+			for (const SFile* pFile : folderAndSelectedFiles.SelectedFiles)
 			{
-				if (SUCCEEDED(spDesktop->ParseDisplayName(nullptr, nullptr, (*j)->lpFilePath, nullptr, &itemIds[uiCount], nullptr)))
+				if (SUCCEEDED(spDesktop->ParseDisplayName(nullptr, nullptr, pFile->lpFilePath, nullptr, &itemIds[uiCount], nullptr)))
 				{
 					uiCount++;
 				}
@@ -712,9 +706,9 @@ bool CGoToFileDlg::OpenSelectedFiles()
 	return bResult;
 }
 
-void CGoToFileDlg::CreateFilterList(LPWSTR& lpFilterStringTable, std::list<SFilter>& Filters)
+void CGoToFileDlg::CreateFilterList(LPWSTR& lpFilterStringTable, std::list<SFilter>& filters)
 {
-	DestroyFilterList(lpFilterStringTable, Filters);
+	DestroyFilterList(lpFilterStringTable, filters);
 
 	CComBSTR spFilter;
 	GetDlgItem(IDC_FILTER).GetWindowText(&spFilter);
@@ -825,7 +819,7 @@ void CGoToFileDlg::CreateFilterList(LPWSTR& lpFilterStringTable, std::list<SFilt
 						eLogicOperator = static_cast<ELogicOperator>(eLogicOperator << 1);
 					}
 					*pChar = L'\0';
-					Filters.push_back(SFilter(lpFilter, eSearchField, eLogicOperator));
+					filters.emplace_back(lpFilter, eSearchField, eLogicOperator);
 				}
 				lpFilter = nullptr;
 				eSearchField = SEARCH_FIELD_FILE_NAME;
@@ -841,12 +835,12 @@ void CGoToFileDlg::CreateFilterList(LPWSTR& lpFilterStringTable, std::list<SFilt
 	}
 }
 
-void CGoToFileDlg::DestroyFilterList(LPWSTR& lpFilterStringTable, std::list<SFilter>& Filters)
+void CGoToFileDlg::DestroyFilterList(LPWSTR& lpFilterStringTable, std::list<SFilter>& filters)
 {
 	delete []lpFilterStringTable;
 	lpFilterStringTable = nullptr;
 
-	Filters.clear();
+	filters.clear();
 }
 
 WCHAR CGoToFileDlg::SFilter::Normalize(WCHAR cChar, ESearchField eSearchField)
@@ -928,22 +922,22 @@ int CGoToFileDlg::SFilter::Like(LPCWSTR lpSearch, LPCWSTR lpFilter, ESearchField
 	return -1;
 }
 
-int CGoToFileDlg::SFilter::Match(const SFile& File) const
+int CGoToFileDlg::SFilter::Match(const SFile& file) const
 {
 	LPCWSTR lpSearch;
 	switch(eSearchField)
 	{
 	case SEARCH_FIELD_FILE_NAME:
-		lpSearch = File.lpFilePath + File.uiFileName;
+		lpSearch = file.lpFilePath + file.uiFileName;
 		break;
 	case SEARCH_FIELD_FILE_PATH:
-		lpSearch = File.lpFilePath;
+		lpSearch = file.lpFilePath;
 		break;
 	case SEARCH_FIELD_PROJECT_NAME:
-		lpSearch = File.lpProjectName;
+		lpSearch = file.lpProjectName;
 		break;
 	case SEARCH_FIELD_PROJECT_PATH:
-		lpSearch = File.lpProjectPath;
+		lpSearch = file.lpProjectPath;
 		break;
 	default:
 		return -1;
@@ -996,7 +990,7 @@ int CGoToFileDlg::SFilter::Match(const SFile& File) const
 LRESULT CALLBACK CGoToFileDlg::FilterProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
 	CGoToFileDlg::SWndProc* pWndProc = CGoToFileDlg::GetWndProc(hWnd);
-	if (pWndProc)
+	if (pWndProc != nullptr)
 	{
 		if (uMsg == WM_KEYDOWN)
 		{
@@ -1015,16 +1009,15 @@ LRESULT CALLBACK CGoToFileDlg::FilterProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
 	return 0;
 }
 
-std::list<CGoToFileDlg::SWndProc*> CGoToFileDlg::s_wndProcs;
+std::list<CGoToFileDlg::SWndProc> CGoToFileDlg::s_wndProcs;
 
 CGoToFileDlg::SWndProc* CGoToFileDlg::GetWndProc(HWND hWnd)
 {
-	for (std::list<CGoToFileDlg::SWndProc*>::iterator i = CGoToFileDlg::s_wndProcs.begin(); i != CGoToFileDlg::s_wndProcs.end(); i++)
+	for (CGoToFileDlg::SWndProc& wndProc : CGoToFileDlg::s_wndProcs)
 	{
-		CGoToFileDlg::SWndProc* pWndProc = *i;
-		if (pWndProc->hWnd == hWnd)
+		if (wndProc.hWnd == hWnd)
 		{
-			return pWndProc;
+			return &wndProc;
 		}
 	}
 	return nullptr;
@@ -1032,19 +1025,18 @@ CGoToFileDlg::SWndProc* CGoToFileDlg::GetWndProc(HWND hWnd)
 
 void CGoToFileDlg::RegisterWndProc(CGoToFileDlg& goToFileDlg, HWND hWnd, WNDPROC pWndProc)
 {
-	CGoToFileDlg::s_wndProcs.push_back(new SWndProc(goToFileDlg, hWnd, pWndProc));
+	CGoToFileDlg::s_wndProcs.emplace_back(goToFileDlg, hWnd, pWndProc);
 }
 
 void CGoToFileDlg::UnregisterWndProc(CGoToFileDlg* pGoToFileDlg)
 {
-	for (std::list<CGoToFileDlg::SWndProc*>::iterator i = CGoToFileDlg::s_wndProcs.begin(); i != CGoToFileDlg::s_wndProcs.end(); i++)
+	for (auto iter = CGoToFileDlg::s_wndProcs.begin(); iter != CGoToFileDlg::s_wndProcs.end(); ++iter)
 	{
-		CGoToFileDlg::SWndProc* pWndProc = *i;
-		if (&pWndProc->goToFileDlg == pGoToFileDlg)
+		const CGoToFileDlg::SWndProc& wndProc = *iter;
+		if (&(wndProc.goToFileDlg) == pGoToFileDlg)
 		{
-			delete pWndProc;
-			CGoToFileDlg::s_wndProcs.erase(i);
-			return;
+			CGoToFileDlg::s_wndProcs.erase(iter);
+			break;
 		}
 	}
 }
