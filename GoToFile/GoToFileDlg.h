@@ -30,11 +30,7 @@ class CGoToFileDlg : public CAxDialogImpl<CGoToFileDlg>
 public:
 	CGoToFileDlg(const CComPtr<VxDTE::_DTE>& spDTE);
 
-	~CGoToFileDlg()
-	{
-		DestroyFileList();
-		DestroyBrowseFileList();
-	}
+	~CGoToFileDlg();
 
 	enum { IDD = IDD_GOTOFILE };
 
@@ -61,283 +57,19 @@ public:
 
 	static HICON LoadIcon(int iID, int iWidth, int iHeight);
 
-	LRESULT OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
-	{
-		CAxDialogImpl<CGoToFileDlg>::OnInitDialog(uMsg, wParam, lParam, bHandled);
-
-		HICON hIcon = LoadIcon(1, 32, 32);
-		if (hIcon)
-		{
-			SetIcon(hIcon);
-		}
-
-		CWindow Files = GetDlgItem(IDC_FILES);
-		{
-			const DWORD dwExtendedStyle = LVS_EX_GRIDLINES | LVS_EX_FULLROWSELECT | LVS_EX_INFOTIP | LVS_EX_LABELTIP;
-			ListView_SetExtendedListViewStyleEx(Files, dwExtendedStyle, dwExtendedStyle);
-
-			LVCOLUMN Column;
-			memset(&Column, 0, sizeof(LVCOLUMN));
-			Column.mask = LVCF_TEXT | LVCF_WIDTH;
-
-			Column.pszText = L"File Name";
-			Column.cx = 150;
-			ListView_InsertColumn(Files, 0, &Column);
-
-			Column.pszText = L"File Path";
-			Column.cx = 250;
-			ListView_InsertColumn(Files, 1, &Column);
-
-			Column.pszText = L"Project Name";
-			Column.cx = 150;
-			ListView_InsertColumn(Files, 2, &Column);
-
-			Column.pszText = L"Project Path";
-			Column.cx = 250;
-			ListView_InsertColumn(Files, 3, &Column);
-		}
-
-		RECT ClientRect;
-		if (GetClientRect(&ClientRect))
-		{
-			WORD uiInitialWidth = static_cast<WORD>(ClientRect.right - ClientRect.left);
-			WORD uiInitialHeight = static_cast<WORD>(ClientRect.bottom - ClientRect.top);
-			m_iInitialSize = MAKELONG(uiInitialWidth, uiInitialHeight);
-		}
-
-		CWindow Filter = GetDlgItem(IDC_FILTER);
-		if (Filter)
-		{
-			Filter.SetFocus();
-
-			WNDPROC pWndProc = reinterpret_cast<WNDPROC>(::SetWindowLongPtr(Filter, GWL_WNDPROC, reinterpret_cast<LONG_PTR>(CGoToFileDlg::FilterProc)));
-			if (pWndProc)
-			{
-				RegisterWndProc(*this, Filter, pWndProc);
-			}
-		}
-
-		FilesAnchor.Init(*this, Files, static_cast<EAnchor>(ANCHOR_TOP | ANCHOR_BOTTOM | ANCHOR_LEFT | ANCHOR_RIGHT));
-		FilterAnchor.Init(*this, Filter, static_cast<EAnchor>(ANCHOR_BOTTOM | ANCHOR_LEFT | ANCHOR_RIGHT));
-		ProjectsAnchor.Init(*this, GetDlgItem(IDC_PROJECTS), static_cast<EAnchor>(ANCHOR_TOP | ANCHOR_LEFT | ANCHOR_RIGHT));
-		ViewCodeAnchor.Init(*this, GetDlgItem(IDC_VIEWCODE), static_cast<EAnchor>(ANCHOR_BOTTOM | ANCHOR_LEFT));
-		ExploreAnchor.Init(*this, GetDlgItem(IDC_EXPLORE), static_cast<EAnchor>(ANCHOR_BOTTOM | ANCHOR_RIGHT));
-		OpenAnchor.Init(*this, GetDlgItem(IDOK), static_cast<EAnchor>(ANCHOR_BOTTOM | ANCHOR_RIGHT));
-		CancelAnchor.Init(*this, GetDlgItem(IDCANCEL), static_cast<EAnchor>(ANCHOR_BOTTOM | ANCHOR_RIGHT));
-
-		RefreshProjectList();
-
-		m_settings.Store();
-		m_settings.Read();
-		m_settings.Restore();
-
-		if (GetSelectedProject() == static_cast<unsigned int>(KNOWN_FILTER_BROWSE))
-		{
-			CreateBrowseFileList(m_settings.GetBrowsePath().c_str());
-		}
-
-		RefreshFileList();
-
-		m_bInitializing = false;
-
-		bHandled = TRUE;
-		return 0;
-	}
-
-	LRESULT OnDestroy(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
-	{
-		CWindow Filter = GetDlgItem(IDC_FILTER);
-		if (Filter)
-		{
-			CGoToFileDlg::SWndProc* pWndProc = CGoToFileDlg::GetWndProc(Filter);
-			if (pWndProc)
-			{
-				::SetWindowLongPtr(Filter, GWL_WNDPROC, reinterpret_cast<LONG_PTR>(pWndProc->pWndProc));
-			}
-		}
-		UnregisterWndProc(this);
-
-		m_settings.Store();
-		m_settings.Write();
-
-		return CAxDialogImpl<CGoToFileDlg>::OnDestroy(uMsg, wParam, lParam, bHandled);
-	}
-
-	LRESULT OnSize(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
-	{
-		LONG iWidth = static_cast<LONG>(LOWORD(lParam));
-		LONG iHeight = static_cast<LONG>(HIWORD(lParam));
-
-		LONG iInitialWidth = GetInitialWidth();
-		LONG iInitialHeight = GetInitialHeight();
-
-		LONG iDeltaX = iWidth - iInitialWidth;
-		LONG iDeltaY = iHeight - iInitialHeight;
-
-		FilesAnchor.Update(iDeltaX, iDeltaY);
-		FilterAnchor.Update(iDeltaX, iDeltaY);
-		ProjectsAnchor.Update(iDeltaX, iDeltaY);
-		ViewCodeAnchor.Update(iDeltaX, iDeltaY);
-		ExploreAnchor.Update(iDeltaX, iDeltaY);
-		OpenAnchor.Update(iDeltaX, iDeltaY);
-		CancelAnchor.Update(iDeltaX, iDeltaY);
-		Invalidate();
-
-		bHandled = TRUE;
-		return 0;
-	}
-
-	LRESULT OnClickedExplore(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
-	{
-		ExploreSelectedFiles();
-		EndDialog(wID);
-		return 0;
-	}
-
-	LRESULT OnClickedOpen(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
-	{
-		OpenSelectedFiles();
-		EndDialog(wID);
-		return 0;
-	}
-
-	LRESULT OnClickedCancel(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
-	{
-		EndDialog(wID);
-		return 0;
-	}
-
-	LRESULT OnChangeFilter(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
-	{
-		if (!m_bInitializing && !m_settings.Restoring())
-		{
-			RefreshFileList();
-		}
-		return 0;
-	}
-
-	LRESULT OnGetDispInfoFiles(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*bHandled*/)
-	{
-		LV_DISPINFO* pDispInfo = reinterpret_cast<LV_DISPINFO*>(pNHM);
-		if (pDispInfo->item.mask & LVIF_TEXT && pDispInfo->item.cchTextMax > 0)
-		{
-			if (pDispInfo->item.iItem >= 0 && pDispInfo->item.iItem < (LPARAM)m_filteredFiles.size())
-			{
-				const SFilteredFile& FilteredFile = m_filteredFiles[pDispInfo->item.iItem];
-				switch(pDispInfo->item.iSubItem)
-				{
-				case 0:
-					wcsncpy_s(pDispInfo->item.pszText, pDispInfo->item.cchTextMax, FilteredFile.pFile->lpFilePath + FilteredFile.pFile->uiFileName, pDispInfo->item.cchTextMax);
-					pDispInfo->item.pszText[pDispInfo->item.cchTextMax - 1] = L'\0';
-					break;
-				case 1:
-					wcsncpy_s(pDispInfo->item.pszText, pDispInfo->item.cchTextMax, FilteredFile.pFile->lpFilePath, pDispInfo->item.cchTextMax);
-					pDispInfo->item.pszText[pDispInfo->item.cchTextMax - 1] = L'\0';
-					break;
-				case 2:
-					wcsncpy_s(pDispInfo->item.pszText, pDispInfo->item.cchTextMax, FilteredFile.pFile->lpProjectName, pDispInfo->item.cchTextMax);
-					pDispInfo->item.pszText[pDispInfo->item.cchTextMax - 1] = L'\0';
-					break;
-				case 3:
-					wcsncpy_s(pDispInfo->item.pszText, pDispInfo->item.cchTextMax, FilteredFile.pFile->lpProjectPath, pDispInfo->item.cchTextMax);
-					pDispInfo->item.pszText[pDispInfo->item.cchTextMax - 1] = L'\0';
-					break;
-				}
-			}
-		}
-		return 0;
-	}
-
-	LRESULT OnGetInfoTipFiles(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*bHandled*/)
-	{
-		LPNMLVGETINFOTIP pInfoTip = reinterpret_cast<LPNMLVGETINFOTIP>(pNHM);
-		if (pInfoTip->cchTextMax > 0)
-		{
-			if (pInfoTip->iItem >= 0 && static_cast<size_t>(pInfoTip->iItem) < m_filteredFiles.size())
-			{
-				const SFilteredFile& FilteredFile = m_filteredFiles[pInfoTip->iItem];
-				switch(pInfoTip->iSubItem)
-				{
-				case 0:
-					wcsncpy_s(pInfoTip->pszText, pInfoTip->cchTextMax, FilteredFile.pFile->lpFilePath, pInfoTip->cchTextMax);
-					pInfoTip->pszText[pInfoTip->cchTextMax - 1] = L'\0';
-					break;
-				case 2:
-					wcsncpy_s(pInfoTip->pszText, pInfoTip->cchTextMax, FilteredFile.pFile->lpProjectPath, pInfoTip->cchTextMax);
-					pInfoTip->pszText[pInfoTip->cchTextMax - 1] = L'\0';
-					break;
-				}
-			}
-		}
-		return 0;
-	}
-
-	LRESULT OnColumnClickFiles(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*bHandled*/)
-	{
-		NM_LISTVIEW FAR* pColumnClick = reinterpret_cast<NM_LISTVIEW FAR*>(pNHM);
-
-		for (int i = 0; i < iMaxColumns; i++)
-		{
-			if (lpSortColumns[i] == pColumnClick->iSubItem)
-			{
-				if (i == 0)
-				{
-					bSortDescending = !bSortDescending;
-				}
-				else
-				{
-					for (int j = 0; j < i; j++)
-					{
-						lpSortColumns[i - j] = lpSortColumns[i - j - 1];
-					}
-					lpSortColumns[0] = pColumnClick->iSubItem;
-				}
-				break;
-			}
-		}
-		RefreshFileList();
-
-		return 0;
-	}
-
-	LRESULT OnDoubleClickFiles(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*bHandled*/)
-	{
-		if (OpenSelectedFiles())
-		{
-			EndDialog(0);
-		}
-
-		return 0;
-	}
-
-	LRESULT OnGetDispInfoProjects(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*bHandled*/)
-	{
-		PNMCOMBOBOXEX pDispInfo = reinterpret_cast<PNMCOMBOBOXEX>(pNHM);
-		if (pDispInfo->ceItem.mask & CBEIF_TEXT && pDispInfo->ceItem.cchTextMax > 0)
-		{
-			if (pDispInfo->ceItem.iItem >= static_cast<INT>(KNOWN_FILTER_COUNT) && static_cast<size_t>(pDispInfo->ceItem.iItem) < static_cast<INT>(KNOWN_FILTER_COUNT) + m_projectNames.size())
-			{
-				LPCWSTR lpProject = m_projectNames[pDispInfo->ceItem.iItem - static_cast<INT>(KNOWN_FILTER_COUNT)];
-
-				wcsncpy_s(pDispInfo->ceItem.pszText, pDispInfo->ceItem.cchTextMax, lpProject, pDispInfo->ceItem.cchTextMax);
-				pDispInfo->ceItem.pszText[pDispInfo->ceItem.cchTextMax - 1] = L'\0';
-			}
-		}
-		return 0;
-	}
-
-	LRESULT OnSelChangedProjects(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
-	{
-		if (!m_bInitializing && !m_settings.Restoring())
-		{
-			if (GetSelectedProject() == static_cast<unsigned int>(KNOWN_FILTER_BROWSE))
-			{
-				CreateBrowseFileList();
-			}
-			RefreshFileList();
-		}
-		return 0;
-	}
+	LRESULT OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
+	LRESULT OnDestroy(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
+	LRESULT OnSize(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
+	LRESULT OnClickedExplore(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnClickedOpen(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnClickedCancel(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnChangeFilter(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnGetDispInfoFiles(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*bHandled*/);
+	LRESULT OnGetInfoTipFiles(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*bHandled*/);
+	LRESULT OnColumnClickFiles(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*bHandled*/);
+	LRESULT OnDoubleClickFiles(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*bHandled*/);
+	LRESULT OnGetDispInfoProjects(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*bHandled*/);
+	LRESULT OnSelChangedProjects(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 
 	LONG GetInitialWidth() const
 	{
@@ -364,9 +96,9 @@ private:
 
 	struct SAnchor 
 	{
-		SAnchor() : hWindow(0), eAnchor(ANCHOR_NONE)
-		{
-		}
+		SAnchor()
+			: hWindow(0), eAnchor(ANCHOR_NONE)
+		{ }
 
 		void Init(HWND hParent, HWND hWindow, EAnchor eAnchor)
 		{
@@ -389,21 +121,14 @@ private:
 			{
 				RECT NewRect = Rect;
 				if ((eAnchor & ANCHOR_TOP) == 0)
-				{
 					NewRect.top += iDeltaY;
-				}
 				if ((eAnchor & ANCHOR_BOTTOM) != 0)
-				{
 					NewRect.bottom += iDeltaY;
-				}
 				if ((eAnchor & ANCHOR_LEFT) == 0)
-				{
 					NewRect.left += iDeltaX;
-				}
 				if ((eAnchor & ANCHOR_RIGHT) != 0)
-				{
 					NewRect.right += iDeltaX;
-				}
+
 				::MoveWindow(hWindow, NewRect.left, NewRect.top, NewRect.right - NewRect.left, NewRect.bottom - NewRect.top, TRUE);
 			}
 		}
@@ -415,13 +140,13 @@ private:
 	};
 
 	LONG m_iInitialSize;
-	SAnchor FilesAnchor;
-	SAnchor FilterAnchor;
-	SAnchor ProjectsAnchor;
-	SAnchor ViewCodeAnchor;
-	SAnchor ExploreAnchor;
-	SAnchor OpenAnchor;
-	SAnchor CancelAnchor;
+	SAnchor m_filesAnchor;
+	SAnchor m_filterAnchor;
+	SAnchor m_projectsAnchor;
+	SAnchor m_viewCodeAnchor;
+	SAnchor m_exploreAnchor;
+	SAnchor m_openAnchor;
+	SAnchor m_cancelAnchor;
 
 	CComPtr<VxDTE::_DTE> m_spDTE;
 
