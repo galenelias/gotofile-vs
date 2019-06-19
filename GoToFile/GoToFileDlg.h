@@ -101,19 +101,19 @@ private:
 			: hWindow(0), eAnchor(ANCHOR_NONE)
 		{ }
 
-		void Init(HWND hParent, HWND hWindow, EAnchor eAnchor)
+		void Init(HWND hParent, HWND hWindowParam, EAnchor eAnchorParam)
 		{
-			this->hWindow = hWindow;
-			this->eAnchor = eAnchor;
+			this->hWindow = hWindowParam;
+			this->eAnchor = eAnchorParam;
 
 			::GetWindowRect(hWindow, &Rect);
 			::MapWindowPoints(HWND_DESKTOP, hParent, reinterpret_cast<LPPOINT>(&Rect), 2);
 		}
 
-		void Adjust(RECT& Rect)
+		void Adjust(RECT& RectParam)
 		{
-			this->Rect.right = this->Rect.left + (Rect.right - Rect.left);
-			this->Rect.bottom = this->Rect.top + (Rect.bottom - Rect.top);
+			this->Rect.right = this->Rect.left + (RectParam.right - RectParam.left);
+			this->Rect.bottom = this->Rect.top + (RectParam.bottom - RectParam.top);
 		}
 
 		void Update(LONG iDeltaX, LONG iDeltaY)

@@ -68,7 +68,7 @@ public:
 
 	// DLL is registered with VS via a pkgdef file. Don't do anything if asked to
 	// self-register.
-	static HRESULT WINAPI UpdateRegistry(BOOL bRegister)
+	static HRESULT WINAPI UpdateRegistry(BOOL /*bRegister*/)
 	{
 		return S_OK;
 	}

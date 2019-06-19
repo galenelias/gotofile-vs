@@ -35,10 +35,10 @@ namespace
 					short sCount = 0;
 					if (SUCCEEDED(spProjectItem->get_FileCount(&sCount)))
 					{
-						for (short i = 1; i <= sCount; i++)
+						for (short j = 1; i <= sCount; i++)
 						{
 							CComBSTR spFilePath;
-							if (SUCCEEDED(spProjectItem->get_FileNames(i, &spFilePath)))
+							if (SUCCEEDED(spProjectItem->get_FileNames(j, &spFilePath)))
 							{
 								if (_wcsicmp(spFilePath, lpFileName) == 0)
 								{
@@ -376,10 +376,10 @@ void CGoToComplementary::GetProjectFiles(VxDTE::Document* pDocument, std::vector
 										CComPtr<VxDTE::ProjectItems> spParentProjectItems;
 										if (SUCCEEDED(spProject->get_ProjectItems(&spParentProjectItems)) && spParentProjectItems)
 										{
-											CComPtr<VxDTE::ProjectItem> spProjectItem = FindProjectItem(spParentProjectItems, findFileName.c_str());
-											if (spProjectItem)
+											CComPtr<VxDTE::ProjectItem> spSubProjectItem = FindProjectItem(spParentProjectItems, findFileName.c_str());
+											if (spSubProjectItem)
 											{
-												AddFileName(pDocument, spProjectItem, findFileName.c_str(), fileNames);
+												AddFileName(pDocument, spSubProjectItem, findFileName.c_str(), fileNames);
 											}
 											bHasProject = true;
 										}

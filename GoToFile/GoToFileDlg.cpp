@@ -22,7 +22,7 @@
 #include "GoToFileDlg.h"
 #include "Stopwatch.h"
 
-static int CALLBACK BrowseCallback(HWND hwnd,UINT uMsg, LPARAM lParam, LPARAM lpData)
+static int CALLBACK BrowseCallback(HWND hwnd,UINT uMsg, LPARAM /*lParam*/, LPARAM lpData)
 {
 	GoToFileSettings* pSettings = reinterpret_cast<GoToFileSettings*>(lpData);
 	switch(uMsg)
@@ -166,7 +166,7 @@ LRESULT CGoToFileDlg::OnDestroy(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& b
 	return CAxDialogImpl<CGoToFileDlg>::OnDestroy(uMsg, wParam, lParam, bHandled);
 }
 
-LRESULT CGoToFileDlg::OnSize(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
+LRESULT CGoToFileDlg::OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& bHandled)
 {
 	const LONG iWidth = static_cast<LONG>(LOWORD(lParam));
 	const LONG iHeight = static_cast<LONG>(HIWORD(lParam));
@@ -210,7 +210,7 @@ LRESULT CGoToFileDlg::OnClickedCancel(WORD /*wNotifyCode*/, WORD wID, HWND /*hWn
 	return 0;
 }
 
-LRESULT CGoToFileDlg::OnChangeFilter(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+LRESULT CGoToFileDlg::OnChangeFilter(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 {
 	if (!m_bInitializing && !m_settings.Restoring())
 	{
@@ -303,7 +303,7 @@ LRESULT CGoToFileDlg::OnColumnClickFiles(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*b
 	return 0;
 }
 
-LRESULT CGoToFileDlg::OnDoubleClickFiles(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*bHandled*/)
+LRESULT CGoToFileDlg::OnDoubleClickFiles(int /*idCtrl*/, LPNMHDR /*pNHM*/, BOOL& /*bHandled*/)
 {
 	if (OpenSelectedFiles())
 	{
@@ -329,7 +329,7 @@ LRESULT CGoToFileDlg::OnGetDispInfoProjects(int /*idCtrl*/, LPNMHDR pNHM, BOOL& 
 	return 0;
 }
 
-LRESULT CGoToFileDlg::OnSelChangedProjects(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
+LRESULT CGoToFileDlg::OnSelChangedProjects(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 {
 	if (!m_bInitializing && !m_settings.Restoring())
 	{
@@ -1124,7 +1124,7 @@ void CGoToFileDlg::DestroyFilterList(LPWSTR& lpFilterStringTable, std::vector<SF
 
 WCHAR CGoToFileDlg::SFilter::Normalize(WCHAR cChar, ESearchField eSearchField)
 {
-	cChar = tolower(cChar);
+	cChar = static_cast<WCHAR>(tolower(cChar));
 	if ((eSearchField == SEARCH_FIELD_FILE_PATH || eSearchField == SEARCH_FIELD_PROJECT_PATH) && cChar == L'/')
 	{
 		cChar = L'\\';
