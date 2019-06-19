@@ -34,9 +34,10 @@ public:
 
 	enum { IDD = IDD_GOTOFILE };
 
-	static const int iMaxColumns = 4;
-	static int lpSortColumns[iMaxColumns];
-	static bool bSortDescending;
+	static constexpr int s_iMaxColumns = 4;
+	static int s_lpSortColumns[s_iMaxColumns];
+	static bool s_bSortDescending;
+	static bool s_bLogging;
 
 	BEGIN_MSG_MAP(CGoToFileDlg)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
@@ -254,10 +255,7 @@ private:
 		{
 		}
 
-		SFile(const SFile& File)
-			: lpFilePath(File.lpFilePath), uiFileName(File.uiFileName), lpProjectName(File.lpProjectName), lpProjectPath(File.lpProjectPath)
-		{
-		}
+		SFile(const SFile& File) = default;
 
 		SFile& operator=(const SFile& Other)
 		{

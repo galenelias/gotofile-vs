@@ -37,8 +37,9 @@ static int CALLBACK BrowseCallback(HWND hwnd,UINT uMsg, LPARAM lParam, LPARAM lp
 	return 0;
 }
 
-int CGoToFileDlg::lpSortColumns[CGoToFileDlg::iMaxColumns] = { 0, 1, 2, 3 };
-bool CGoToFileDlg::bSortDescending = false;
+int CGoToFileDlg::s_lpSortColumns[CGoToFileDlg::s_iMaxColumns] = { 0, 1, 2, 3 };
+bool CGoToFileDlg::s_bSortDescending = false;
+bool CGoToFileDlg::s_bLogging = false;
 
 CGoToFileDlg::CGoToFileDlg(const CComPtr<VxDTE::_DTE>& spDTE)
 	: m_bInitializing(true)
@@ -278,21 +279,21 @@ LRESULT CGoToFileDlg::OnColumnClickFiles(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*b
 {
 	NM_LISTVIEW FAR* pColumnClick = reinterpret_cast<NM_LISTVIEW FAR*>(pNHM);
 
-	for (int i = 0; i < iMaxColumns; i++)
+	for (int i = 0; i < s_iMaxColumns; i++)
 	{
-		if (lpSortColumns[i] == pColumnClick->iSubItem)
+		if (s_lpSortColumns[i] == pColumnClick->iSubItem)
 		{
 			if (i == 0)
 			{
-				bSortDescending = !bSortDescending;
+				s_bSortDescending = !s_bSortDescending;
 			}
 			else
 			{
 				for (int j = 0; j < i; j++)
 				{
-					lpSortColumns[i - j] = lpSortColumns[i - j - 1];
+					s_lpSortColumns[i - j] = s_lpSortColumns[i - j - 1];
 				}
-				lpSortColumns[0] = pColumnClick->iSubItem;
+				s_lpSortColumns[0] = pColumnClick->iSubItem;
 			}
 			break;
 		}
@@ -524,7 +525,7 @@ void CGoToFileDlg::CreateBrowseFileList()
 
 		Stopwatch stopwatch;
 		CreateBrowseFileList(lpPath);
-		LogToFile(L"CreateBrowseFileList (%zu): Ran in %llu microseconds", m_browseFiles.size(), stopwatch.GetElapsedMicroseconds(););
+		LogToFile(L"CreateBrowseFileList (%zu): Ran in %llu microseconds", m_browseFiles.size(), stopwatch.GetElapsedMicroseconds());
 	}
 }
 
@@ -549,6 +550,7 @@ void CGoToFileDlg::CreateBrowseFileList(LPCWSTR lpPath)
 						break;
 					}
 				}
+
 				if (!bIgnore)
 				{
 					const size_t cchFileName = wcslen(lpPath) + 1 + wcslen(FindData.cFileName) + 1;
@@ -672,9 +674,9 @@ bool CGoToFileDlg::CompareFiles(const SFilteredFile& file1, const SFilteredFile&
 {
 	int iResult = 0;
 
-	for (int i = 0; i < iMaxColumns && iResult == 0; i++)
+	for (int i = 0; i < s_iMaxColumns && iResult == 0; i++)
 	{
-		switch(CGoToFileDlg::lpSortColumns[i])
+		switch(CGoToFileDlg::s_lpSortColumns[i])
 		{
 		case 0:
 			iResult = _wcsicmp(file1.pFile->lpFilePath + file1.pFile->uiFileName, file2.pFile->lpFilePath + file2.pFile->uiFileName);
@@ -691,7 +693,7 @@ bool CGoToFileDlg::CompareFiles(const SFilteredFile& file1, const SFilteredFile&
 		}
 	}
 
-	if (CGoToFileDlg::bSortDescending)
+	if (CGoToFileDlg::s_bSortDescending)
 	{
 		iResult = -iResult;
 	}
@@ -1341,6 +1343,9 @@ void CGoToFileDlg::InitializeLogFile()
 {
 	static CHAR s_szLogFilePath[MAX_PATH];
 	static bool s_initializedLogFilePath = false;
+
+	if (!s_bLogging)
+		return;
 
 	if (!s_initializedLogFilePath)
 	{
