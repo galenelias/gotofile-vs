@@ -784,36 +784,17 @@ void CGoToFileDlg::RefreshFileList()
 
 	int iItem = 0;
 	int iBestItem = -1;
-	LVITEM Item;
-	memset(&Item, 0, sizeof(LVITEM));
-	Item.mask = LVIF_TEXT;
-	Item.pszText = LPSTR_TEXTCALLBACK;
-	int iCount = ListView_GetItemCount(hFiles);
 	ListView_SetItemCountEx(hFiles, m_filteredFiles.size(), 0);
+
 	for (const SFilteredFile& filteredFile : m_filteredFiles)
 	{
-		Item.iItem = iItem++;
-
-		if (Item.iItem >= iCount)
-		{
-			Item.iSubItem = 0;
-			ListView_SetItem(hFiles, &Item);
-
-			Item.iSubItem = 1;
-			ListView_SetItem(hFiles, &Item);
-
-			Item.iSubItem = 2;
-			ListView_SetItem(hFiles, &Item);
-
-			Item.iSubItem = 3;
-			ListView_SetItem(hFiles, &Item);
-		}
-
 		if (iBestItem == -1 || filteredFile.iMatch < iBestMatch)
 		{
-			iBestItem = Item.iItem;
+			iBestItem = iItem;
 			iBestMatch = filteredFile.iMatch;
 		}
+
+		iItem++;
 	}
 
 	Select(iBestItem);
