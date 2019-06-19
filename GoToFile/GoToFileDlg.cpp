@@ -39,7 +39,7 @@ static int CALLBACK BrowseCallback(HWND hwnd,UINT uMsg, LPARAM lParam, LPARAM lp
 
 int CGoToFileDlg::s_lpSortColumns[CGoToFileDlg::s_iMaxColumns] = { 0, 1, 2, 3 };
 bool CGoToFileDlg::s_bSortDescending = false;
-bool CGoToFileDlg::s_bLogging = false;
+bool CGoToFileDlg::s_bLogging = true;
 
 CGoToFileDlg::CGoToFileDlg(const CComPtr<VxDTE::_DTE>& spDTE)
 	: m_bInitializing(true)
@@ -396,7 +396,7 @@ void CGoToFileDlg::CreateFileList()
 	CComPtr<VxDTE::_Solution> spSolution;
 	if (SUCCEEDED(m_spDTE->get_Solution(reinterpret_cast<VxDTE::Solution**>(&spSolution))) && spSolution)
 	{
-		SName< std::list<LPWSTR> > ProjectPath(m_projectPaths, nullptr);
+		SName< std::vector<LPWSTR> > ProjectPath(m_projectPaths, nullptr);
 
 		CComPtr<VxDTE::Projects> spProjects;
 		if (SUCCEEDED(spSolution->get_Projects(&spProjects)) && spProjects)
@@ -417,7 +417,7 @@ void CGoToFileDlg::CreateFileList()
 	}
 }
 
-void CGoToFileDlg::CreateFileList(SName< std::list<LPWSTR> >& ParentProjectPath, VxDTE::Project* pProject)
+void CGoToFileDlg::CreateFileList(SName< std::vector<LPWSTR> >& ParentProjectPath, VxDTE::Project* pProject)
 {
 	CComBSTR projectName = nullptr;
 
@@ -427,17 +427,18 @@ void CGoToFileDlg::CreateFileList(SName< std::list<LPWSTR> >& ParentProjectPath,
 		if (SUCCEEDED(pProject->get_ProjectItems(&spProjectItems)) && spProjectItems)
 		{
 			SName< std::vector<LPWSTR> > ProjectName(m_projectNames, projectName);
-			SName< std::list<LPWSTR> > ProjectPath(ParentProjectPath, projectName);
+			SName< std::vector<LPWSTR> > ProjectPath(ParentProjectPath, projectName);
 			CreateFileList(ProjectName, ProjectPath, spProjectItems);
 		}
 	}
 }
 
-void CGoToFileDlg::CreateFileList(SName< std::vector<LPWSTR> >& ProjectName, SName< std::list<LPWSTR> >& ParentProjectPath, VxDTE::ProjectItems* pParentProjectItems)
+void CGoToFileDlg::CreateFileList(SName< std::vector<LPWSTR> >& ProjectName, SName< std::vector<LPWSTR> >& ParentProjectPath, VxDTE::ProjectItems* pParentProjectItems)
 {
 	LONG lCount = 0;
 	if (SUCCEEDED(pParentProjectItems->get_Count(&lCount)))
 	{
+		m_files.reserve(m_files.size() + lCount);
 		for (LONG i = 1; i <= lCount; i++)
 		{
 			CComPtr<VxDTE::ProjectItem> spProjectItem;
@@ -465,7 +466,7 @@ void CGoToFileDlg::CreateFileList(SName< std::vector<LPWSTR> >& ProjectName, SNa
 							CComBSTR spFolderName = nullptr;
 							if (SUCCEEDED(spProjectItem->get_Name(&spFolderName)) && spFolderName)
 							{
-								SName< std::list<LPWSTR> > ProjectPath(ParentProjectPath, spFolderName);
+								SName< std::vector<LPWSTR> > ProjectPath(ParentProjectPath, spFolderName);
 								CreateFileList(ProjectName, ProjectPath, spProjectItems);
 							}
 						}
@@ -533,16 +534,16 @@ void CGoToFileDlg::CreateBrowseFileList(LPCWSTR lpPath)
 {
 	std::wstring wstSearch = std::wstring(lpPath) + L"\\*";
 
-	WIN32_FIND_DATA FindData;
-	HANDLE hFindFile = FindFirstFile(wstSearch.c_str(), &FindData);
+	WIN32_FIND_DATA findData;
+	HANDLE hFindFile = FindFirstFile(wstSearch.c_str(), &findData);
 	if (hFindFile != INVALID_HANDLE_VALUE)
 	{
 		do
 		{
-			if ((FindData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) == 0)
+			if ((findData.dwFileAttributes & FILE_ATTRIBUTE_HIDDEN) == 0)
 			{
 				bool bIgnore = true;
-				for (LPCWSTR i = FindData.cFileName; *i != L'\0'; i++)
+				for (LPCWSTR i = findData.cFileName; *i != L'\0'; i++)
 				{
 					if (*i != L'.')
 					{
@@ -553,12 +554,12 @@ void CGoToFileDlg::CreateBrowseFileList(LPCWSTR lpPath)
 
 				if (!bIgnore)
 				{
-					const size_t cchFileName = wcslen(lpPath) + 1 + wcslen(FindData.cFileName) + 1;
+					const size_t cchFileName = wcslen(lpPath) + 1 + wcslen(findData.cFileName) + 1;
 					LPWSTR lpFileName = new WCHAR[cchFileName];
 					wcscpy_s(lpFileName, cchFileName, lpPath);
 					wcscat_s(lpFileName, cchFileName, L"\\");
-					wcscat_s(lpFileName, cchFileName, FindData.cFileName);
-					if ((FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
+					wcscat_s(lpFileName, cchFileName, findData.cFileName);
+					if ((findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
 					{
 						CreateBrowseFileList(lpFileName);
 						delete []lpFileName;
@@ -569,10 +570,9 @@ void CGoToFileDlg::CreateBrowseFileList(LPCWSTR lpPath)
 					}
 				}
 			}
-		} while (FindNextFile(hFindFile, &FindData));
+		} while (FindNextFile(hFindFile, &findData));
 		FindClose(hFindFile);
 	}
-
 }
 
 void CGoToFileDlg::DestroyBrowseFileList()
@@ -719,10 +719,10 @@ void CGoToFileDlg::RefreshFileList()
 
 	unsigned int uiProjectIndex = GetSelectedProject();
 	LPCWSTR lpProjectName = uiProjectIndex >= static_cast<unsigned int>(KNOWN_FILTER_COUNT) && uiProjectIndex < static_cast<unsigned int>(KNOWN_FILTER_COUNT) + m_projectNames.size() ? m_projectNames[uiProjectIndex - static_cast<unsigned int>(KNOWN_FILTER_COUNT)] : nullptr;
-	const std::list<SFile>& filesToFilter = uiProjectIndex == static_cast<unsigned int>(KNOWN_FILTER_BROWSE) ? m_browseFiles : m_files;
+	const std::vector<SFile>& filesToFilter = uiProjectIndex == static_cast<unsigned int>(KNOWN_FILTER_BROWSE) ? m_browseFiles : m_files;
 
 	LPWSTR lpFilterStringTable = nullptr;
-	std::list<SFilter> filters;
+	std::vector<SFilter> filters;
 	CreateFilterList(lpFilterStringTable, filters);
 
 	m_filteredFiles.clear();
@@ -985,7 +985,7 @@ bool CGoToFileDlg::OpenSelectedFiles()
 	return bResult;
 }
 
-void CGoToFileDlg::CreateFilterList(LPWSTR& lpFilterStringTable, std::list<SFilter>& filters)
+void CGoToFileDlg::CreateFilterList(LPWSTR& lpFilterStringTable, std::vector<SFilter>& filters)
 {
 	DestroyFilterList(lpFilterStringTable, filters);
 
@@ -1114,7 +1114,7 @@ void CGoToFileDlg::CreateFilterList(LPWSTR& lpFilterStringTable, std::list<SFilt
 	}
 }
 
-void CGoToFileDlg::DestroyFilterList(LPWSTR& lpFilterStringTable, std::list<SFilter>& filters)
+void CGoToFileDlg::DestroyFilterList(LPWSTR& lpFilterStringTable, std::vector<SFilter>& filters)
 {
 	delete []lpFilterStringTable;
 	lpFilterStringTable = nullptr;

@@ -61,16 +61,16 @@ public:
 	LRESULT OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 	LRESULT OnDestroy(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 	LRESULT OnSize(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
-	LRESULT OnClickedExplore(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-	LRESULT OnClickedOpen(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-	LRESULT OnClickedCancel(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-	LRESULT OnChangeFilter(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-	LRESULT OnGetDispInfoFiles(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*bHandled*/);
-	LRESULT OnGetInfoTipFiles(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*bHandled*/);
-	LRESULT OnColumnClickFiles(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*bHandled*/);
-	LRESULT OnDoubleClickFiles(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*bHandled*/);
-	LRESULT OnGetDispInfoProjects(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*bHandled*/);
-	LRESULT OnSelChangedProjects(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
+	LRESULT OnClickedExplore(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
+	LRESULT OnClickedOpen(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
+	LRESULT OnClickedCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
+	LRESULT OnChangeFilter(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
+	LRESULT OnGetDispInfoFiles(int idCtrl, LPNMHDR pNHM, BOOL& bHandled);
+	LRESULT OnGetInfoTipFiles(int idCtrl, LPNMHDR pNHM, BOOL& bHandled);
+	LRESULT OnColumnClickFiles(int idCtrl, LPNMHDR pNHM, BOOL& bHandled);
+	LRESULT OnDoubleClickFiles(int idCtrl, LPNMHDR pNHM, BOOL& bHandled);
+	LRESULT OnGetDispInfoProjects(int idCtrl, LPNMHDR pNHM, BOOL& bHandled);
+	LRESULT OnSelChangedProjects(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 
 	LONG GetInitialWidth() const
 	{
@@ -201,6 +201,12 @@ private:
 			}
 		}
 
+		SName(const SName<T>& other) = delete;
+		SName(SName<T>&& other) = delete;
+
+		SName& operator=(const SName<T>& other) = delete;
+		SName& operator=(SName<T>&& other) = delete;
+
 		LPCWSTR GetName()
 		{
 			if (!bUsed && lpName)
@@ -218,8 +224,8 @@ private:
 	};
 
 	void CreateFileList();
-	void CreateFileList(SName<std::list<LPWSTR>>& ParentProjectPath, VxDTE::Project* pProject);
-	void CreateFileList(SName<std::vector<LPWSTR>>& ProjectName, SName<std::list<LPWSTR>>& ParentProjectPath, VxDTE::ProjectItems* pParentProjectItems);
+	void CreateFileList(SName<std::vector<LPWSTR>>& ParentProjectPath, VxDTE::Project* pProject);
+	void CreateFileList(SName<std::vector<LPWSTR>>& ProjectName, SName<std::vector<LPWSTR>>& ParentProjectPath, VxDTE::ProjectItems* pParentProjectItems);
 	void DestroyFileList();
 
 	void CreateBrowseFileList();
@@ -255,20 +261,6 @@ private:
 		{
 		}
 
-		SFile(const SFile& File) = default;
-
-		SFile& operator=(const SFile& Other)
-		{
-			if (this != &Other)
-			{
-				lpFilePath = Other.lpFilePath;
-				uiFileName = Other.uiFileName;
-				lpProjectName = Other.lpProjectName;
-				lpProjectPath = Other.lpProjectPath;
-			}
-			return *this;
-		}
-
 		LPWSTR lpFilePath;
 		unsigned short uiFileName;
 		LPCWSTR lpProjectName;
@@ -287,9 +279,9 @@ private:
 	};
 
 	std::vector<LPWSTR> m_projectNames;
-	std::list<LPWSTR> m_projectPaths;
-	std::list<SFile> m_files;
-	std::list<SFile> m_browseFiles;
+	std::vector<LPWSTR> m_projectPaths;
+	std::vector<SFile> m_files;
+	std::vector<SFile> m_browseFiles;
 	std::vector<SFilteredFile> m_filteredFiles;
 
 public:
@@ -388,8 +380,8 @@ private:
 		bool bWildcard;
 	};
 
-	void CreateFilterList(LPWSTR& lpFilterStringTable, std::list<SFilter>& Filters);
-	void DestroyFilterList(LPWSTR& lpFilterStringTable, std::list<SFilter>& Filters);
+	void CreateFilterList(LPWSTR& lpFilterStringTable, std::vector<SFilter>& Filters);
+	void DestroyFilterList(LPWSTR& lpFilterStringTable, std::vector<SFilter>& Filters);
 
 	static LRESULT CALLBACK FilterProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
