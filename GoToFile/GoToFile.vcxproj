@@ -184,6 +184,7 @@
     <ClInclude Include="Package.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="StdAfx.h" />
+    <ClInclude Include="Stopwatch.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="GoToFile.rc" />

@@ -24,12 +24,12 @@
 #include "dte.h"
 #include "GoToFileSettings.h"
 #include "..\GoToFileUI\Resource.h"
+#include <fstream>  // std::ofstream
 
 class CGoToFileDlg : public CAxDialogImpl<CGoToFileDlg>
 {
 public:
 	CGoToFileDlg(const CComPtr<VxDTE::_DTE>& spDTE);
-
 	~CGoToFileDlg();
 
 	enum { IDD = IDD_GOTOFILE };
@@ -443,7 +443,10 @@ private:
 	static void RegisterWndProc(CGoToFileDlg& goToFileDlg, HWND hWnd, WNDPROC pWndProc);
 	static void UnregisterWndProc(CGoToFileDlg* pGoToFileDlg);
 
-private:
 	static bool CompareFiles(const SFilteredFile& file1, const SFilteredFile& file2);
 
+	void InitializeLogFile();
+	void LogToFile(LPCWSTR pwzFormat, ...);
+
+	std::wofstream m_logfile;
 };

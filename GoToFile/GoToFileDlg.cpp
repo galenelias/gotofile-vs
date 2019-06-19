@@ -20,6 +20,7 @@
 
 #include "stdafx.h"
 #include "GoToFileDlg.h"
+#include "Stopwatch.h"
 
 static int CALLBACK BrowseCallback(HWND hwnd,UINT uMsg, LPARAM lParam, LPARAM lpData)
 {
@@ -45,6 +46,7 @@ CGoToFileDlg::CGoToFileDlg(const CComPtr<VxDTE::_DTE>& spDTE)
 	, m_iInitialSize(0)
 	, m_spDTE(spDTE)
 {
+	InitializeLogFile();
 	CreateFileList();
 }
 
@@ -52,6 +54,8 @@ CGoToFileDlg::~CGoToFileDlg()
 {
 	DestroyFileList();
 	DestroyBrowseFileList();
+
+	m_logfile.close();
 }
 
 LRESULT CGoToFileDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
@@ -125,7 +129,12 @@ LRESULT CGoToFileDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 
 	if (GetSelectedProject() == static_cast<unsigned int>(KNOWN_FILTER_BROWSE))
 	{
+		Stopwatch stopwatch;
+
 		CreateBrowseFileList(m_settings.GetBrowsePath().c_str());
+
+		auto elapsedMicros = stopwatch.GetElapsedMicroseconds();
+		LogToFile(L"CreateBrowseFileList (%zu): Ran in %llu microseconds", m_browseFiles.size(), elapsedMicros);
 	}
 
 	RefreshFileList();
@@ -512,7 +521,10 @@ void CGoToFileDlg::CreateBrowseFileList()
 	if (pFolder != nullptr && SHGetPathFromIDList(pFolder, lpPath))
 	{
 		m_settings.SetBrowsePath(lpPath);
+
+		Stopwatch stopwatch;
 		CreateBrowseFileList(lpPath);
+		LogToFile(L"CreateBrowseFileList (%zu): Ran in %llu microseconds", m_browseFiles.size(), stopwatch.GetElapsedMicroseconds(););
 	}
 }
 
@@ -558,6 +570,7 @@ void CGoToFileDlg::CreateBrowseFileList(LPCWSTR lpPath)
 		} while (FindNextFile(hFindFile, &FindData));
 		FindClose(hFindFile);
 	}
+
 }
 
 void CGoToFileDlg::DestroyBrowseFileList()
@@ -698,9 +711,9 @@ void CGoToFileDlg::RefreshFileList()
 {
 	HWND hFiles = GetDlgItem(IDC_FILES);
 	if (!hFiles)
-	{
 		return;
-	}
+
+	Stopwatch stopwatch;
 
 	unsigned int uiProjectIndex = GetSelectedProject();
 	LPCWSTR lpProjectName = uiProjectIndex >= static_cast<unsigned int>(KNOWN_FILTER_COUNT) && uiProjectIndex < static_cast<unsigned int>(KNOWN_FILTER_COUNT) + m_projectNames.size() ? m_projectNames[uiProjectIndex - static_cast<unsigned int>(KNOWN_FILTER_COUNT)] : nullptr;
@@ -813,7 +826,9 @@ void CGoToFileDlg::RefreshFileList()
 	else
 	{
 		SetWindowText(lpWindowCaption);
-	}	
+	}
+
+	LogToFile(L"RefreshFileList (%zu of %zu): Ran in %llu microseconds", m_filteredFiles.size(), m_files.size(), stopwatch.GetElapsedMicroseconds());
 }
 
 void CGoToFileDlg::ExploreSelectedFiles()
@@ -1320,4 +1335,50 @@ void CGoToFileDlg::UnregisterWndProc(CGoToFileDlg* pGoToFileDlg)
 			break;
 		}
 	}
+}
+
+void CGoToFileDlg::InitializeLogFile()
+{
+	static CHAR s_szLogFilePath[MAX_PATH];
+	static bool s_initializedLogFilePath = false;
+
+	if (!s_initializedLogFilePath)
+	{
+		WCHAR wzLogFilePath[MAX_PATH];
+		PWSTR pwzAppDataPath = nullptr;
+		SHGetKnownFolderPath(FOLDERID_LocalAppData, 0 /*dwFlags*/, NULL /*hToken*/, &pwzAppDataPath);
+
+		wcscpy_s(wzLogFilePath, _countof(wzLogFilePath), pwzAppDataPath);
+		wcscat_s(wzLogFilePath, _countof(wzLogFilePath), L"\\GoToFile");
+		CoTaskMemFree(pwzAppDataPath);
+
+		// Ensure our directory exists
+		CreateDirectory(wzLogFilePath, nullptr /*lpSecurityAttributes*/);
+
+		wcscat_s(wzLogFilePath, _countof(wzLogFilePath), L"\\GoToFile.log");
+
+		WideCharToMultiByte(CP_ACP, 0, wzLogFilePath, -1, s_szLogFilePath, _countof(s_szLogFilePath), NULL /*lpDefaultChar*/, NULL /*lpUsedDefaultChar*/);
+		s_initializedLogFilePath = true;
+	}
+
+	m_logfile.open(s_szLogFilePath, std::ofstream::out | std::ofstream::app);
+}
+
+void CGoToFileDlg::LogToFile(LPCWSTR pwzFormat, ...)
+{
+	SYSTEMTIME systemTime;
+	GetLocalTime(&systemTime);
+
+	WCHAR wzDateString[64], wzTimeString[64];
+	GetDateFormatEx(LOCALE_NAME_USER_DEFAULT, 0, &systemTime, nullptr /*lpFormat*/, wzDateString, _countof(wzDateString), nullptr /*lpCalendar*/);
+	GetTimeFormatEx(LOCALE_NAME_USER_DEFAULT, 0, &systemTime, nullptr /*lpFormat*/, wzTimeString, _countof(wzTimeString));
+
+	va_list argList;
+	va_start(argList, pwzFormat);
+
+	WCHAR wzLogLine[1024];
+	vswprintf_s(wzLogLine, pwzFormat, argList);
+	m_logfile << wzDateString << " " << wzTimeString << ": " << wzLogLine << std::endl;
+
+	va_end(argList);
 }
