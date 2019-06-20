@@ -156,7 +156,7 @@ private:
 	{
 	public:
 		SName(T& Names, LPCWSTR lpName)
-			: Names(Names), bUsed(false), lpName(nullptr)
+			: Names(Names)
 		{
 			if (lpName != nullptr)
 			{
@@ -167,7 +167,7 @@ private:
 		}
 
 		SName(SName<T>& Parent, LPCWSTR lpName)
-			: Names(Parent.Names), bUsed(false), lpName(nullptr)
+			: Names(Parent.Names)
 		{
 			if (lpName != nullptr)
 			{
@@ -218,9 +218,9 @@ private:
 		}
 
 	private:
-		bool bUsed;
+		bool bUsed = false;
 		T& Names;
-		LPWSTR lpName;
+		LPWSTR lpName = nullptr;
 	};
 
 	void CreateFileList();

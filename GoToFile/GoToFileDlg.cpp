@@ -396,7 +396,7 @@ void CGoToFileDlg::CreateFileList()
 	CComPtr<VxDTE::_Solution> spSolution;
 	if (SUCCEEDED(m_spDTE->get_Solution(reinterpret_cast<VxDTE::Solution**>(&spSolution))) && spSolution)
 	{
-		SName< std::vector<LPWSTR> > ProjectPath(m_projectPaths, nullptr);
+		SName<std::vector<LPWSTR>> projectPath(m_projectPaths, nullptr);
 
 		CComPtr<VxDTE::Projects> spProjects;
 		if (SUCCEEDED(spSolution->get_Projects(&spProjects)) && spProjects)
@@ -409,7 +409,7 @@ void CGoToFileDlg::CreateFileList()
 					CComPtr<VxDTE::Project> spProject;
 					if (SUCCEEDED(spProjects->Item(CComVariant(i), &spProject)) && spProject)
 					{
-						CreateFileList(ProjectPath, spProject);
+						CreateFileList(projectPath, spProject);
 					}
 				}
 			}
@@ -417,23 +417,23 @@ void CGoToFileDlg::CreateFileList()
 	}
 }
 
-void CGoToFileDlg::CreateFileList(SName< std::vector<LPWSTR> >& ParentProjectPath, VxDTE::Project* pProject)
+void CGoToFileDlg::CreateFileList(SName<std::vector<LPWSTR>>& parentProjectPath, VxDTE::Project* pProject)
 {
-	CComBSTR projectName = nullptr;
+	CComBSTR spProjectName = nullptr;
 
-	if (SUCCEEDED(pProject->get_Name(&projectName)) && projectName)
+	if (SUCCEEDED(pProject->get_Name(&spProjectName)) && spProjectName)
 	{
 		CComPtr<VxDTE::ProjectItems> spProjectItems;
 		if (SUCCEEDED(pProject->get_ProjectItems(&spProjectItems)) && spProjectItems)
 		{
-			SName< std::vector<LPWSTR> > ProjectName(m_projectNames, projectName);
-			SName< std::vector<LPWSTR> > ProjectPath(ParentProjectPath, projectName);
-			CreateFileList(ProjectName, ProjectPath, spProjectItems);
+			SName<std::vector<LPWSTR>> projectName(m_projectNames, spProjectName);
+			SName<std::vector<LPWSTR>> projectPath(parentProjectPath, spProjectName);
+			CreateFileList(projectName, projectPath, spProjectItems);
 		}
 	}
 }
 
-void CGoToFileDlg::CreateFileList(SName< std::vector<LPWSTR> >& ProjectName, SName< std::vector<LPWSTR> >& ParentProjectPath, VxDTE::ProjectItems* pParentProjectItems)
+void CGoToFileDlg::CreateFileList(SName<std::vector<LPWSTR>>& projectName, SName<std::vector<LPWSTR>>& parentProjectPath, VxDTE::ProjectItems* pParentProjectItems)
 {
 	LONG lCount = 0;
 	if (SUCCEEDED(pParentProjectItems->get_Count(&lCount)))
@@ -455,7 +455,7 @@ void CGoToFileDlg::CreateFileList(SName< std::vector<LPWSTR> >& ProjectName, SNa
 							const size_t cchFilePath = wcslen(spFilePath) + 1;
 							LPWSTR lpFilePathCopy = new WCHAR[cchFilePath];
 							wcscpy_s(lpFilePathCopy, cchFilePath, spFilePath);
-							m_files.emplace_back(lpFilePathCopy, ProjectName.GetName(), ParentProjectPath.GetName());
+							m_files.emplace_back(lpFilePathCopy, projectName.GetName(), parentProjectPath.GetName());
 						}
 					}
 					else
@@ -466,8 +466,8 @@ void CGoToFileDlg::CreateFileList(SName< std::vector<LPWSTR> >& ProjectName, SNa
 							CComBSTR spFolderName = nullptr;
 							if (SUCCEEDED(spProjectItem->get_Name(&spFolderName)) && spFolderName)
 							{
-								SName< std::vector<LPWSTR> > ProjectPath(ParentProjectPath, spFolderName);
-								CreateFileList(ProjectName, ProjectPath, spProjectItems);
+								SName<std::vector<LPWSTR>> projectPath(parentProjectPath, spFolderName);
+								CreateFileList(projectName, projectPath, spProjectItems);
 							}
 						}
 						else
@@ -475,7 +475,7 @@ void CGoToFileDlg::CreateFileList(SName< std::vector<LPWSTR> >& ProjectName, SNa
 							CComPtr<VxDTE::Project> spProject;
 							if (SUCCEEDED(spProjectItem->get_SubProject(&spProject)) && spProject)
 							{
-								CreateFileList(ParentProjectPath, spProject);
+								CreateFileList(parentProjectPath, spProject);
 							}
 						}
 					}
