@@ -78,7 +78,7 @@ public:
 	VSL_BEGIN_COMMAND_MAP()
 		VSL_COMMAND_MAP_ENTRY(CLSID_GoToFileCmdSet, cmdidGotoFile, NULL, CommandHandler::ExecHandler(&OnGoToFileCommand))
 		VSL_COMMAND_MAP_ENTRY(CLSID_GoToFileCmdSet, cmdidGotoComplementary, NULL, CommandHandler::ExecHandler(&OnGoToComplementaryCommand))
-		VSL_END_VSCOMMAND_MAP()
+	VSL_END_VSCOMMAND_MAP()
 
 
 	// Command handler called when the user selects the "My Command" command.

@@ -73,20 +73,17 @@
 
       <Button guid="guidGoToFileCmdSet" id="cmdidGotoFile" priority="0x0100" type="Button">
         <Parent guid="guidGoToFileCmdSet" id="MyMenuGroup" />
-        <Icon guid="guidImages" id="bmpPic1" />
         <Strings>
-          <ButtonText>Go To File</ButtonText>
+          <ButtonText>Go To File...</ButtonText>
         </Strings>
       </Button>
 
       <Button guid="guidGoToFileCmdSet" id="cmdidGotoComplementary" priority="0x0101" type="Button">
         <Parent guid="guidGoToFileCmdSet" id="MyMenuGroup" />
-        <Icon guid="guidImages" id="bmpPic2" />
         <Strings>
           <ButtonText>Go To Complementary</ButtonText>
         </Strings>
       </Button>
-
     </Buttons>
    
     <!--The bitmaps section is used to define the bitmaps that are used for the commands.-->
