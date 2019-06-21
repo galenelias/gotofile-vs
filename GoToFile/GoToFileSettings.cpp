@@ -22,10 +22,27 @@
 #include "GoToFileSettings.h"
 #include "GoToFileDlg.h"
 
+const WCHAR* c_pwzSoftwareGoToFileRegLocation = L"Software\\GalenElias\\FastGoToFile";
+const WCHAR* c_pwzGoToFileRegLocation = L"GalenElias\\FastGoToFile";
+const WCHAR* c_pwzOpenNowRegLocation = L"Software\\Nem's Tools\\Open Now!";
+
+static std::wstring ReadWstringFromRegistry(HKEY hRegHive, LPCWSTR pwzName)
+{
+	std::wstring result;
+	DWORD uiSize = 0;
+	if (RegQueryValueEx(hRegHive, pwzName, NULL, NULL, NULL, &uiSize) == ERROR_SUCCESS && uiSize > 0)
+	{
+		result.resize((uiSize / sizeof(WCHAR)) - 1);
+		RegQueryValueEx(hRegHive, pwzName, NULL, NULL, reinterpret_cast<LPBYTE>(&result[0]), &uiSize);
+	}
+
+	return result;
+}
+
 void GoToFileSettings::Store()
 {
-	int iDesktopWidth = GetSystemMetrics(SM_CXMAXTRACK);
-	int iDesktopHeight = GetSystemMetrics(SM_CYMAXTRACK);
+	const int iDesktopWidth = GetSystemMetrics(SM_CXMAXTRACK);
+	const int iDesktopHeight = GetSystemMetrics(SM_CYMAXTRACK);
 
 	RECT rect;
 	if (GetWindowRect(goToFileDlg, &rect))
@@ -99,11 +116,11 @@ void GoToFileSettings::Store()
 	CWindow wndFilter = goToFileDlg.GetDlgItem(IDC_FILTER);
 	if (wndFilter)
 	{
-		BSTR lpText = NULL;
-		wndFilter.GetWindowText(lpText);
-		if (lpText)
+		CComBSTR spText;
+		wndFilter.GetWindowText(&spText);
+		if (spText)
 		{
-			m_filter = lpText;
+			m_filter = spText;
 		}
 	}
 
@@ -195,78 +212,65 @@ void GoToFileSettings::Restore()
 
 void GoToFileSettings::Read()
 {
-	DWORD uiSize;
-
-	// TODO: Move to new registry hive
-	HKEY hOpenNow;
-	if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Software\\Nem's Tools\\Open Now!", 0, KEY_READ, &hOpenNow) == ERROR_SUCCESS)
+	if (!ReadFromKey(c_pwzGoToFileRegLocation))
 	{
-		uiSize = sizeof(m_location);
-		RegQueryValueEx(hOpenNow, L"Location", NULL, NULL, reinterpret_cast<LPBYTE>(&m_location), &uiSize);
-		uiSize = sizeof(m_size);
-		RegQueryValueEx(hOpenNow, L"Size", NULL, NULL, reinterpret_cast<LPBYTE>(&m_size), &uiSize);
-
-		uiSize = sizeof(m_iFileNameWidth);
-		RegQueryValueEx(hOpenNow, L"FileNameWidth", NULL, NULL, reinterpret_cast<LPBYTE>(&m_iFileNameWidth), &uiSize);
-		uiSize = sizeof(m_iFilePathWidth);
-		RegQueryValueEx(hOpenNow, L"FilePathWidth", NULL, NULL, reinterpret_cast<LPBYTE>(&m_iFilePathWidth), &uiSize);
-		uiSize = sizeof(m_iProjectNameWidth);
-		RegQueryValueEx(hOpenNow, L"ProjectNameWidth", NULL, NULL, reinterpret_cast<LPBYTE>(&m_iProjectNameWidth), &uiSize);
-		uiSize = sizeof(m_iProjectPathWidth);
-		RegQueryValueEx(hOpenNow, L"ProjectPathWidth", NULL, NULL, reinterpret_cast<LPBYTE>(&m_iProjectPathWidth), &uiSize);
-
-		m_project.clear();
-		uiSize = 0;
-		if (RegQueryValueEx(hOpenNow, L"Project", NULL, NULL, NULL, &uiSize) == ERROR_SUCCESS && uiSize > 0)
-		{
-			m_project.resize((uiSize / sizeof(WCHAR)) - 1);
-			RegQueryValueEx(hOpenNow, L"Project", NULL, NULL, reinterpret_cast<LPBYTE>(&m_project[0]), &uiSize);
-		}
-
-		m_filter.clear();
-		uiSize = 0;
-		if (RegQueryValueEx(hOpenNow, L"Filter", NULL, NULL, NULL, &uiSize) == ERROR_SUCCESS && uiSize > 0)
-		{
-			m_filter.resize((uiSize / sizeof(WCHAR)) - 1);
-			RegQueryValueEx(hOpenNow, L"Filter", NULL, NULL, reinterpret_cast<LPBYTE>(&m_filter[0]), &uiSize);
-		}
-
-		m_browsePath.clear();
-		uiSize = 0;
-		if (RegQueryValueEx(hOpenNow, L"BrowsePath", NULL, NULL, NULL, &uiSize) == ERROR_SUCCESS && uiSize > 0)
-		{
-			m_browsePath.resize((uiSize / sizeof(WCHAR)) - 1);
-			RegQueryValueEx(hOpenNow, L"BrowsePath", NULL, NULL, reinterpret_cast<LPBYTE>(&m_browsePath[0]), &uiSize);
-		}
-
-		uiSize = sizeof(m_eViewKind);
-		RegQueryValueEx(hOpenNow, L"ViewKind", NULL, NULL, reinterpret_cast<LPBYTE>(&m_eViewKind), &uiSize);
+		ReadFromKey(c_pwzOpenNowRegLocation);
 	}
+}
+
+bool GoToFileSettings::ReadFromKey(LPCWSTR pwzRegKey)
+{
+	HKEY hRegHive;
+
+	if (RegOpenKeyExW(HKEY_CURRENT_USER, pwzRegKey, 0, KEY_READ, &hRegHive) != ERROR_SUCCESS)
+		return false;
+
+	DWORD uiSize;
+	uiSize = sizeof(m_location);
+	RegQueryValueEx(hRegHive, L"Location", NULL, NULL, reinterpret_cast<LPBYTE>(&m_location), &uiSize);
+	uiSize = sizeof(m_size);
+	RegQueryValueEx(hRegHive, L"Size", NULL, NULL, reinterpret_cast<LPBYTE>(&m_size), &uiSize);
+
+	uiSize = sizeof(m_iFileNameWidth);
+	RegQueryValueEx(hRegHive, L"FileNameWidth", NULL, NULL, reinterpret_cast<LPBYTE>(&m_iFileNameWidth), &uiSize);
+	uiSize = sizeof(m_iFilePathWidth);
+	RegQueryValueEx(hRegHive, L"FilePathWidth", NULL, NULL, reinterpret_cast<LPBYTE>(&m_iFilePathWidth), &uiSize);
+	uiSize = sizeof(m_iProjectNameWidth);
+	RegQueryValueEx(hRegHive, L"ProjectNameWidth", NULL, NULL, reinterpret_cast<LPBYTE>(&m_iProjectNameWidth), &uiSize);
+	uiSize = sizeof(m_iProjectPathWidth);
+	RegQueryValueEx(hRegHive, L"ProjectPathWidth", NULL, NULL, reinterpret_cast<LPBYTE>(&m_iProjectPathWidth), &uiSize);
+
+	m_project = ReadWstringFromRegistry(hRegHive, L"Project");
+	m_filter = ReadWstringFromRegistry(hRegHive, L"Filter");
+	m_browsePath = ReadWstringFromRegistry(hRegHive, L"BrowsePath");
+
+	uiSize = sizeof(m_eViewKind);
+	RegQueryValueEx(hRegHive, L"ViewKind", NULL, NULL, reinterpret_cast<LPBYTE>(&m_eViewKind), &uiSize);
+	
+	return true;
 }
 
 void GoToFileSettings::Write()
 {
 	HKEY hSoftware;
-
-	// TODO: Move to new registry hive
 	if (RegOpenKeyEx(HKEY_CURRENT_USER, L"Software", 0, KEY_WRITE, &hSoftware) == ERROR_SUCCESS)
 	{
-		HKEY hOpenNow;
-		if (RegCreateKeyEx(hSoftware, L"Nem's Tools\\Open Now!", 0, NULL, REG_OPTION_NON_VOLATILE, KEY_WRITE, NULL, &hOpenNow, NULL) == ERROR_SUCCESS)
+		HKEY hRegHive;
+		if (RegCreateKeyEx(hSoftware, c_pwzGoToFileRegLocation, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_WRITE, NULL, &hRegHive, NULL) == ERROR_SUCCESS)
 		{
-			RegSetValueEx(hOpenNow, L"Location", 0, REG_BINARY, reinterpret_cast<const LPBYTE>(&m_location), sizeof(m_location));
-			RegSetValueEx(hOpenNow, L"Size", 0, REG_BINARY, reinterpret_cast<const LPBYTE>(&m_size), sizeof(m_size));
+			RegSetValueEx(hRegHive, L"Location", 0, REG_BINARY, reinterpret_cast<const LPBYTE>(&m_location), sizeof(m_location));
+			RegSetValueEx(hRegHive, L"Size", 0, REG_BINARY, reinterpret_cast<const LPBYTE>(&m_size), sizeof(m_size));
 
-			RegSetValueEx(hOpenNow, L"FileNameWidth", 0, REG_DWORD, reinterpret_cast<const LPBYTE>(&m_iFileNameWidth), sizeof(m_iFileNameWidth));
-			RegSetValueEx(hOpenNow, L"FilePathWidth", 0, REG_DWORD, reinterpret_cast<const LPBYTE>(&m_iFilePathWidth), sizeof(m_iFilePathWidth));
-			RegSetValueEx(hOpenNow, L"ProjectNameWidth", 0, REG_DWORD, reinterpret_cast<const LPBYTE>(&m_iProjectNameWidth), sizeof(m_iProjectNameWidth));
-			RegSetValueEx(hOpenNow, L"ProjectPathWidth", 0, REG_DWORD, reinterpret_cast<const LPBYTE>(&m_iProjectPathWidth), sizeof(m_iProjectPathWidth));
+			RegSetValueEx(hRegHive, L"FileNameWidth", 0, REG_DWORD, reinterpret_cast<const LPBYTE>(&m_iFileNameWidth), sizeof(m_iFileNameWidth));
+			RegSetValueEx(hRegHive, L"FilePathWidth", 0, REG_DWORD, reinterpret_cast<const LPBYTE>(&m_iFilePathWidth), sizeof(m_iFilePathWidth));
+			RegSetValueEx(hRegHive, L"ProjectNameWidth", 0, REG_DWORD, reinterpret_cast<const LPBYTE>(&m_iProjectNameWidth), sizeof(m_iProjectNameWidth));
+			RegSetValueEx(hRegHive, L"ProjectPathWidth", 0, REG_DWORD, reinterpret_cast<const LPBYTE>(&m_iProjectPathWidth), sizeof(m_iProjectPathWidth));
 
-			RegSetValueEx(hOpenNow, L"Project", 0, REG_SZ, reinterpret_cast<const BYTE *>(m_project.c_str()), !m_project.empty() ? sizeof(WCHAR) * static_cast<DWORD>(m_project.size() + 1) : 0);
-			RegSetValueEx(hOpenNow, L"Filter", 0, REG_SZ, reinterpret_cast<const BYTE *>(m_filter.c_str()), !m_filter.empty() ? sizeof(WCHAR) * static_cast<DWORD>(m_filter.size() + 1) : 0);
-			RegSetValueEx(hOpenNow, L"BrowsePath", 0, REG_SZ, reinterpret_cast<const BYTE *>(m_browsePath.c_str()), !m_browsePath.empty() ? sizeof(WCHAR) * static_cast<DWORD>(m_browsePath.size() + 1) : 0);
+			RegSetValueEx(hRegHive, L"Project", 0, REG_SZ, reinterpret_cast<const BYTE *>(m_project.c_str()), !m_project.empty() ? sizeof(WCHAR) * static_cast<DWORD>(m_project.size() + 1) : 0);
+			RegSetValueEx(hRegHive, L"Filter", 0, REG_SZ, reinterpret_cast<const BYTE *>(m_filter.c_str()), !m_filter.empty() ? sizeof(WCHAR) * static_cast<DWORD>(m_filter.size() + 1) : 0);
+			RegSetValueEx(hRegHive, L"BrowsePath", 0, REG_SZ, reinterpret_cast<const BYTE *>(m_browsePath.c_str()), !m_browsePath.empty() ? sizeof(WCHAR) * static_cast<DWORD>(m_browsePath.size() + 1) : 0);
 
-			RegSetValueEx(hOpenNow, L"ViewKind", 0, REG_DWORD, reinterpret_cast<const LPBYTE>(&m_eViewKind), sizeof(m_eViewKind));
+			RegSetValueEx(hRegHive, L"ViewKind", 0, REG_DWORD, reinterpret_cast<const LPBYTE>(&m_eViewKind), sizeof(m_eViewKind));
 		}
 	}
 }

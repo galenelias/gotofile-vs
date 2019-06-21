@@ -52,17 +52,17 @@ public:
 		m_size.cy = 300;
 	}
 
-	inline bool Restoring() const
+	bool Restoring() const
 	{
 		return m_bRestoring;
 	}
 
-	inline const std::wstring& GetBrowsePath() const
+	const std::wstring& GetBrowsePath() const
 	{
 		return m_browsePath;
 	}
 
-	inline void SetBrowsePath(LPCWSTR lpBrowsePath)
+	void SetBrowsePath(LPCWSTR lpBrowsePath)
 	{
 		m_browsePath = lpBrowsePath;
 	}
@@ -73,6 +73,7 @@ public:
 	void Read();
 	void Write();
 
+	bool ReadFromKey(LPCWSTR pwzRegKey);
 private:
 	bool m_bRestoring;
 
