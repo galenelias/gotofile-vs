@@ -375,8 +375,8 @@ private:
 		bool bWildcard;
 	};
 
-	void CreateFilterList(LPWSTR& lpFilterStringTable, std::vector<SFilter>& Filters);
-	void DestroyFilterList(LPWSTR& lpFilterStringTable, std::vector<SFilter>& Filters);
+	void CreateFilterList(std::unique_ptr<WCHAR[]>& spFilterStringTable, std::vector<SFilter>& Filters);
+	void DestroyFilterList(std::unique_ptr<WCHAR[]>& spFilterStringTable, std::vector<SFilter>& Filters);
 
 	static LRESULT CALLBACK FilterProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 

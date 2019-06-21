@@ -703,9 +703,9 @@ void CGoToFileDlg::RefreshFileList()
 	LPCWSTR lpProjectName = uiProjectIndex >= static_cast<unsigned int>(KNOWN_FILTER_COUNT) && uiProjectIndex < static_cast<unsigned int>(KNOWN_FILTER_COUNT) + m_projectNames.size() ? m_projectNames[uiProjectIndex - static_cast<unsigned int>(KNOWN_FILTER_COUNT)].get() : nullptr;
 	const std::vector<SFile>& filesToFilter = uiProjectIndex == static_cast<unsigned int>(KNOWN_FILTER_BROWSE) ? m_browseFiles : m_files;
 
-	LPWSTR lpFilterStringTable = nullptr;
+	std::unique_ptr<WCHAR[]> spFilterStringTable;
 	std::vector<SFilter> filters;
-	CreateFilterList(lpFilterStringTable, filters);
+	CreateFilterList(spFilterStringTable, filters);
 
 	m_filteredFiles.clear();
 	m_filteredFiles.reserve(filesToFilter.size());
@@ -760,7 +760,7 @@ void CGoToFileDlg::RefreshFileList()
 		}
 	}
 
-	DestroyFilterList(lpFilterStringTable, filters);
+	DestroyFilterList(spFilterStringTable, filters);
 
 	SortFileList();
 
@@ -967,17 +967,17 @@ bool CGoToFileDlg::OpenSelectedFiles()
 	return bResult;
 }
 
-void CGoToFileDlg::CreateFilterList(LPWSTR& lpFilterStringTable, std::vector<SFilter>& filters)
+void CGoToFileDlg::CreateFilterList(std::unique_ptr<WCHAR[]>& spFilterStringTable, std::vector<SFilter>& filters)
 {
-	DestroyFilterList(lpFilterStringTable, filters);
+	DestroyFilterList(spFilterStringTable, filters);
 
 	CComBSTR spFilter;
 	GetDlgItem(IDC_FILTER).GetWindowText(&spFilter);
 	if (spFilter)
 	{
 		const size_t cchFilter = wcslen(spFilter) + 1;
-		lpFilterStringTable = new WCHAR[cchFilter];
-		wcscpy_s(lpFilterStringTable, cchFilter, spFilter);
+		spFilterStringTable = std::make_unique<WCHAR[]>(cchFilter);
+		wcscpy_s(spFilterStringTable.get(), cchFilter, spFilter);
 
 		LPWSTR lpFilter = nullptr;
 		ESearchField eSearchField = SEARCH_FIELD_FILE_NAME;
@@ -986,7 +986,7 @@ void CGoToFileDlg::CreateFilterList(LPWSTR& lpFilterStringTable, std::vector<SFi
 		bool bQuoted = false;
 
 		bool bParse = true;
-		for (LPWSTR pChar = lpFilterStringTable; bParse; pChar++)
+		for (LPWSTR pChar = spFilterStringTable.get(); bParse; pChar++)
 		{
 			bool bDone = false;
 			switch(*pChar)
@@ -1096,11 +1096,9 @@ void CGoToFileDlg::CreateFilterList(LPWSTR& lpFilterStringTable, std::vector<SFi
 	}
 }
 
-void CGoToFileDlg::DestroyFilterList(LPWSTR& lpFilterStringTable, std::vector<SFilter>& filters)
+void CGoToFileDlg::DestroyFilterList(std::unique_ptr<WCHAR[]>& spFilterStringTable, std::vector<SFilter>& filters)
 {
-	delete []lpFilterStringTable;
-	lpFilterStringTable = nullptr;
-
+	spFilterStringTable.reset();
 	filters.clear();
 }
 

@@ -38,33 +38,33 @@ public:
 
 	GoToFileSettings(class CGoToFileDlg& goToFileDlg)
 		: goToFileDlg(goToFileDlg)
-		, bRestoring(false)
-		, iFileNameWidth(150)
-		, iFilePathWidth(250)
-		, iProjectNameWidth(150)
-		, iProjectPathWidth(250)
-		, eViewKind(VIEW_KIND_PRIMARY)
+		, m_bRestoring(false)
+		, m_iFileNameWidth(150)
+		, m_iFilePathWidth(250)
+		, m_iProjectNameWidth(150)
+		, m_iProjectPathWidth(250)
+		, m_eViewKind(VIEW_KIND_PRIMARY)
 	{
-		Location.x = 0;
-		Location.y = 0;
+		m_location.x = 0;
+		m_location.y = 0;
 
-		Size.cx = 400;
-		Size.cy = 300;
+		m_size.cx = 400;
+		m_size.cy = 300;
 	}
 
 	inline bool Restoring() const
 	{
-		return bRestoring;
+		return m_bRestoring;
 	}
 
 	inline const std::wstring& GetBrowsePath() const
 	{
-		return BrowsePath;
+		return m_browsePath;
 	}
 
 	inline void SetBrowsePath(LPCWSTR lpBrowsePath)
 	{
-		BrowsePath = lpBrowsePath;
+		m_browsePath = lpBrowsePath;
 	}
 
 	void Store();
@@ -74,18 +74,18 @@ public:
 	void Write();
 
 private:
-	bool bRestoring;
+	bool m_bRestoring;
 
-	POINT Location;
-	SIZE Size;
+	POINT m_location;
+	SIZE m_size;
 
-	long iFileNameWidth;
-	long iFilePathWidth;
-	long iProjectNameWidth;
-	long iProjectPathWidth;
+	long m_iFileNameWidth;
+	long m_iFilePathWidth;
+	long m_iProjectNameWidth;
+	long m_iProjectPathWidth;
 
-	std::wstring Project;
-	std::wstring Filter;
-	std::wstring BrowsePath;
-	EViewKind eViewKind;
+	std::wstring m_project;
+	std::wstring m_filter;
+	std::wstring m_browsePath;
+	EViewKind m_eViewKind;
 };
