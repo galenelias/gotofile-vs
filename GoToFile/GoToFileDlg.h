@@ -156,48 +156,42 @@ private:
 	{
 	public:
 		SName(T& Names, LPCWSTR lpName)
-			: Names(Names)
+			: namesList(Names)
 		{
 			if (lpName != nullptr)
 			{
 				const size_t cchName = wcslen(lpName) + 1;
-				this->lpName = new WCHAR[cchName];
+				this->spOwnedName = std::make_unique<WCHAR[]>(cchName);
+				this->lpName = this->spOwnedName.get();
 				wcscpy_s(this->lpName, cchName, lpName);
 			}
 		}
 
-		SName(SName<T>& Parent, LPCWSTR lpName)
-			: Names(Parent.Names)
+		SName(SName<T>& parent, LPCWSTR lpName)
+			: namesList(parent.namesList)
 		{
 			if (lpName != nullptr)
 			{
-				if (Parent.lpName != nullptr)
+				if (parent.lpName != nullptr)
 				{
-					const size_t cchName = wcslen(Parent.lpName) + 1 + wcslen(lpName) + 1;
-					this->lpName = new WCHAR[cchName];
-					wcscpy_s(this->lpName, cchName, Parent.lpName);
+					const size_t cchName = wcslen(parent.lpName) + 1 + wcslen(lpName) + 1;
+					this->spOwnedName = std::make_unique<WCHAR[]>(cchName);
+					this->lpName = this->spOwnedName.get();
+					wcscpy_s(this->lpName, cchName, parent.lpName);
 					wcscat_s(this->lpName, cchName, L"\\");
 					wcscat_s(this->lpName, cchName, lpName);
 				}
 				else
 				{
 					const size_t cchName = wcslen(lpName) + 1;
-					this->lpName = new WCHAR[cchName];
+					this->spOwnedName = std::make_unique<WCHAR[]>(cchName);
+					this->lpName = this->spOwnedName.get();
 					wcscpy_s(this->lpName, cchName, lpName);
 				}
 			}
 			else
 			{
-				bUsed = true;
-				lpName = Parent.lpName;
-			}
-		}
-
-		~SName()
-		{
-			if (!bUsed)
-			{
-				delete []lpName;
+				this->lpName = parent.lpName;
 			}
 		}
 
@@ -212,20 +206,21 @@ private:
 			if (!bUsed && lpName)
 			{
 				bUsed = true;
-				Names.push_back(lpName);
+				namesList.push_back(std::move(spOwnedName));
 			}
 			return lpName;
 		}
 
 	private:
+		T& namesList;
 		bool bUsed = false;
-		T& Names;
+		std::unique_ptr<WCHAR[]> spOwnedName;
 		LPWSTR lpName = nullptr;
 	};
 
 	void CreateFileList();
-	void CreateFileList(SName<std::vector<LPWSTR>>& ParentProjectPath, VxDTE::Project* pProject);
-	void CreateFileList(SName<std::vector<LPWSTR>>& ProjectName, SName<std::vector<LPWSTR>>& ParentProjectPath, VxDTE::ProjectItems* pParentProjectItems);
+	void CreateFileList(SName<std::vector<std::unique_ptr<WCHAR[]>>>& ParentProjectPath, VxDTE::Project* pProject);
+	void CreateFileList(SName<std::vector<std::unique_ptr<WCHAR[]>>>& ProjectName, SName<std::vector<std::unique_ptr<WCHAR[]>>>& ParentProjectPath, VxDTE::ProjectItems* pParentProjectItems);
 	void DestroyFileList();
 
 	void CreateBrowseFileList();
@@ -246,22 +241,22 @@ private:
 
 	struct SFile
 	{
-		SFile(LPWSTR lpFilePath, LPCWSTR lpProjectName, LPCWSTR lpProjectPath)
-			: lpFilePath(lpFilePath), uiFileName(0), lpProjectName(lpProjectName), lpProjectPath(lpProjectPath)
+		SFile(std::unique_ptr<WCHAR[]>&& spFilePathArg, LPCWSTR lpProjectName, LPCWSTR lpProjectPath)
+			: spFilePath(std::move(spFilePathArg)), uiFileName(0), lpProjectName(lpProjectName), lpProjectPath(lpProjectPath)
 		{
-			LPWSTR lpFileName = std::max<LPWSTR>(wcsrchr(lpFilePath, L'\\'), wcsrchr(lpFilePath, L'/'));
+			LPWSTR lpFileName = std::max<LPWSTR>(wcsrchr(spFilePath.get(), L'\\'), wcsrchr(spFilePath.get(), L'/'));
 			if (lpFileName)
 			{
-				uiFileName = static_cast<unsigned short>(lpFileName - lpFilePath) + 1;
+				uiFileName = static_cast<unsigned short>(lpFileName - spFilePath.get()) + 1;
 			}
 		}
 
-		SFile(LPWSTR lpFilePath, unsigned short uiFileName, LPCWSTR lpProjectName, LPCWSTR lpProjectPath)
-			: lpFilePath(lpFilePath), uiFileName(uiFileName), lpProjectName(lpProjectName), lpProjectPath(lpProjectPath)
+		SFile(std::unique_ptr<WCHAR[]>&& spFilePath, unsigned short uiFileName, LPCWSTR lpProjectName, LPCWSTR lpProjectPath)
+			: spFilePath(std::move(spFilePath)), uiFileName(uiFileName), lpProjectName(lpProjectName), lpProjectPath(lpProjectPath)
 		{
 		}
 
-		LPWSTR lpFilePath;
+		std::unique_ptr<WCHAR[]> spFilePath;
 		unsigned short uiFileName;
 		LPCWSTR lpProjectName;
 		LPCWSTR lpProjectPath;
@@ -278,14 +273,14 @@ private:
 		int iMatch;
 	};
 
-	std::vector<LPWSTR> m_projectNames;
-	std::vector<LPWSTR> m_projectPaths;
+	std::vector<std::unique_ptr<WCHAR[]>> m_projectNames;
+	std::vector<std::unique_ptr<WCHAR[]>> m_projectPaths;
 	std::vector<SFile> m_files;
 	std::vector<SFile> m_browseFiles;
 	std::vector<SFilteredFile> m_filteredFiles;
 
 public:
-	const std::vector<LPWSTR>& GetProjectNames() const
+	const std::vector<std::unique_ptr<WCHAR[]>>& GetProjectNames() const
 	{
 		return m_projectNames;
 	}
@@ -400,7 +395,7 @@ private:
 			{
 				for (unsigned short i = 0; i < Folder.uiFileName; i++)
 				{
-					if (SFilter::Normalize(Folder.lpFilePath[i], SEARCH_FIELD_FILE_PATH) != SFilter::Normalize(File.lpFilePath[i], SEARCH_FIELD_FILE_PATH))
+					if (SFilter::Normalize(Folder.spFilePath[i], SEARCH_FIELD_FILE_PATH) != SFilter::Normalize(File.spFilePath[i], SEARCH_FIELD_FILE_PATH))
 					{
 						return false;
 					}

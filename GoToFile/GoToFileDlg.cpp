@@ -230,11 +230,11 @@ LRESULT CGoToFileDlg::OnGetDispInfoFiles(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*b
 			switch (pDispInfo->item.iSubItem)
 			{
 			case 0:
-				wcsncpy_s(pDispInfo->item.pszText, pDispInfo->item.cchTextMax, FilteredFile.pFile->lpFilePath + FilteredFile.pFile->uiFileName, pDispInfo->item.cchTextMax);
+				wcsncpy_s(pDispInfo->item.pszText, pDispInfo->item.cchTextMax, FilteredFile.pFile->spFilePath.get() + FilteredFile.pFile->uiFileName, pDispInfo->item.cchTextMax);
 				pDispInfo->item.pszText[pDispInfo->item.cchTextMax - 1] = L'\0';
 				break;
 			case 1:
-				wcsncpy_s(pDispInfo->item.pszText, pDispInfo->item.cchTextMax, FilteredFile.pFile->lpFilePath, pDispInfo->item.cchTextMax);
+				wcsncpy_s(pDispInfo->item.pszText, pDispInfo->item.cchTextMax, FilteredFile.pFile->spFilePath.get(), pDispInfo->item.cchTextMax);
 				pDispInfo->item.pszText[pDispInfo->item.cchTextMax - 1] = L'\0';
 				break;
 			case 2:
@@ -262,7 +262,7 @@ LRESULT CGoToFileDlg::OnGetInfoTipFiles(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*bH
 			switch (pInfoTip->iSubItem)
 			{
 			case 0:
-				wcsncpy_s(pInfoTip->pszText, pInfoTip->cchTextMax, FilteredFile.pFile->lpFilePath, pInfoTip->cchTextMax);
+				wcsncpy_s(pInfoTip->pszText, pInfoTip->cchTextMax, FilteredFile.pFile->spFilePath.get(), pInfoTip->cchTextMax);
 				pInfoTip->pszText[pInfoTip->cchTextMax - 1] = L'\0';
 				break;
 			case 2:
@@ -320,7 +320,7 @@ LRESULT CGoToFileDlg::OnGetDispInfoProjects(int /*idCtrl*/, LPNMHDR pNHM, BOOL& 
 	{
 		if (pDispInfo->ceItem.iItem >= static_cast<INT>(KNOWN_FILTER_COUNT) && static_cast<size_t>(pDispInfo->ceItem.iItem) < static_cast<INT>(KNOWN_FILTER_COUNT) + m_projectNames.size())
 		{
-			LPCWSTR lpProject = m_projectNames[pDispInfo->ceItem.iItem - static_cast<INT>(KNOWN_FILTER_COUNT)];
+			LPCWSTR lpProject = m_projectNames[pDispInfo->ceItem.iItem - static_cast<INT>(KNOWN_FILTER_COUNT)].get();
 
 			wcsncpy_s(pDispInfo->ceItem.pszText, pDispInfo->ceItem.cchTextMax, lpProject, pDispInfo->ceItem.cchTextMax);
 			pDispInfo->ceItem.pszText[pDispInfo->ceItem.cchTextMax - 1] = L'\0';
@@ -396,7 +396,7 @@ void CGoToFileDlg::CreateFileList()
 	CComPtr<VxDTE::_Solution> spSolution;
 	if (SUCCEEDED(m_spDTE->get_Solution(reinterpret_cast<VxDTE::Solution**>(&spSolution))) && spSolution)
 	{
-		SName<std::vector<LPWSTR>> projectPath(m_projectPaths, nullptr);
+		SName<std::vector<std::unique_ptr<WCHAR[]>>> projectPath(m_projectPaths, nullptr);
 
 		CComPtr<VxDTE::Projects> spProjects;
 		if (SUCCEEDED(spSolution->get_Projects(&spProjects)) && spProjects)
@@ -417,7 +417,7 @@ void CGoToFileDlg::CreateFileList()
 	}
 }
 
-void CGoToFileDlg::CreateFileList(SName<std::vector<LPWSTR>>& parentProjectPath, VxDTE::Project* pProject)
+void CGoToFileDlg::CreateFileList(SName<std::vector<std::unique_ptr<WCHAR[]>>>& parentProjectPath, VxDTE::Project* pProject)
 {
 	CComBSTR spProjectName = nullptr;
 
@@ -426,14 +426,14 @@ void CGoToFileDlg::CreateFileList(SName<std::vector<LPWSTR>>& parentProjectPath,
 		CComPtr<VxDTE::ProjectItems> spProjectItems;
 		if (SUCCEEDED(pProject->get_ProjectItems(&spProjectItems)) && spProjectItems)
 		{
-			SName<std::vector<LPWSTR>> projectName(m_projectNames, spProjectName);
-			SName<std::vector<LPWSTR>> projectPath(parentProjectPath, spProjectName);
+			SName<std::vector<std::unique_ptr<WCHAR[]>>> projectName(m_projectNames, spProjectName);
+			SName<std::vector<std::unique_ptr<WCHAR[]>>> projectPath(parentProjectPath, spProjectName);
 			CreateFileList(projectName, projectPath, spProjectItems);
 		}
 	}
 }
 
-void CGoToFileDlg::CreateFileList(SName<std::vector<LPWSTR>>& projectName, SName<std::vector<LPWSTR>>& parentProjectPath, VxDTE::ProjectItems* pParentProjectItems)
+void CGoToFileDlg::CreateFileList(SName<std::vector<std::unique_ptr<WCHAR[]>>>& projectName, SName<std::vector<std::unique_ptr<WCHAR[]>>>& parentProjectPath, VxDTE::ProjectItems* pParentProjectItems)
 {
 	LONG lCount = 0;
 	if (SUCCEEDED(pParentProjectItems->get_Count(&lCount)))
@@ -453,9 +453,9 @@ void CGoToFileDlg::CreateFileList(SName<std::vector<LPWSTR>>& projectName, SName
 						if (SUCCEEDED(spProjectItem->get_FileNames(0, &spFilePath)) && spFilePath)
 						{
 							const size_t cchFilePath = wcslen(spFilePath) + 1;
-							LPWSTR lpFilePathCopy = new WCHAR[cchFilePath];
-							wcscpy_s(lpFilePathCopy, cchFilePath, spFilePath);
-							m_files.emplace_back(lpFilePathCopy, projectName.GetName(), parentProjectPath.GetName());
+							std::unique_ptr<WCHAR[]> spFilePathCopy = std::make_unique<WCHAR[]>(cchFilePath);
+							wcscpy_s(spFilePathCopy.get(), cchFilePath, spFilePath);
+							m_files.emplace_back(std::move(spFilePathCopy), projectName.GetName(), parentProjectPath.GetName());
 						}
 					}
 					else
@@ -466,7 +466,7 @@ void CGoToFileDlg::CreateFileList(SName<std::vector<LPWSTR>>& projectName, SName
 							CComBSTR spFolderName = nullptr;
 							if (SUCCEEDED(spProjectItem->get_Name(&spFolderName)) && spFolderName)
 							{
-								SName<std::vector<LPWSTR>> projectPath(parentProjectPath, spFolderName);
+								SName<std::vector<std::unique_ptr<WCHAR[]>>> projectPath(parentProjectPath, spFolderName);
 								CreateFileList(projectName, projectPath, spProjectItems);
 							}
 						}
@@ -487,22 +487,8 @@ void CGoToFileDlg::CreateFileList(SName<std::vector<LPWSTR>>& projectName, SName
 
 void CGoToFileDlg::DestroyFileList()
 {
-	for (LPWSTR pName : m_projectNames)
-	{
-		delete []pName;
-	}
 	m_projectNames.clear();
-
-	for (LPWSTR pPath : m_projectPaths)
-	{
-		delete []pPath;
-	}
 	m_projectPaths.clear();
-
-	for (SFile& file : m_files)
-	{
-		delete []file.lpFilePath;
-	}
 	m_files.clear();
 }
 
@@ -555,18 +541,18 @@ void CGoToFileDlg::CreateBrowseFileList(LPCWSTR lpPath)
 				if (!bIgnore)
 				{
 					const size_t cchFileName = wcslen(lpPath) + 1 + wcslen(findData.cFileName) + 1;
-					LPWSTR lpFileName = new WCHAR[cchFileName];
-					wcscpy_s(lpFileName, cchFileName, lpPath);
-					wcscat_s(lpFileName, cchFileName, L"\\");
-					wcscat_s(lpFileName, cchFileName, findData.cFileName);
+					std::unique_ptr<WCHAR[]> spFileName = std::make_unique<WCHAR[]>(cchFileName);
+					wcscpy_s(spFileName.get(), cchFileName, lpPath);
+					wcscat_s(spFileName.get(), cchFileName, L"\\");
+					wcscat_s(spFileName.get(), cchFileName, findData.cFileName);
 					if ((findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
 					{
-						CreateBrowseFileList(lpFileName);
-						delete []lpFileName;
+						CreateBrowseFileList(spFileName.get());
 					}
 					else
 					{
-						m_browseFiles.emplace_back(lpFileName, L"<Browse>", lpFileName);
+						LPCWSTR pwzFileName = spFileName.get();
+						m_browseFiles.emplace_back(std::move(spFileName), L"<Browse>", pwzFileName);
 					}
 				}
 			}
@@ -577,10 +563,6 @@ void CGoToFileDlg::CreateBrowseFileList(LPCWSTR lpPath)
 
 void CGoToFileDlg::DestroyBrowseFileList()
 {
-	for (SFile& file : m_browseFiles)
-	{
-		delete []file.lpFilePath;
-	}
 	m_browseFiles.clear();
 }
 
@@ -612,9 +594,9 @@ unsigned int CGoToFileDlg::GetSelectedProject()
 	return 0;
 }
 
-static bool CompareProjects(LPCWSTR pProject1, LPCWSTR pProject2)
+static bool CompareProjects(const std::unique_ptr<WCHAR[]>& spProject1, const std::unique_ptr<WCHAR[]>& spProject2)
 {
-	return _wcsicmp(pProject1, pProject2) < 0;
+	return _wcsicmp(spProject1.get(), spProject2.get()) < 0;
 }
 
 void CGoToFileDlg::RefreshProjectList()
@@ -679,10 +661,10 @@ bool CGoToFileDlg::CompareFiles(const SFilteredFile& file1, const SFilteredFile&
 		switch(CGoToFileDlg::s_lpSortColumns[i])
 		{
 		case 0:
-			iResult = _wcsicmp(file1.pFile->lpFilePath + file1.pFile->uiFileName, file2.pFile->lpFilePath + file2.pFile->uiFileName);
+			iResult = _wcsicmp(file1.pFile->spFilePath.get() + file1.pFile->uiFileName, file2.pFile->spFilePath.get() + file2.pFile->uiFileName);
 			break;
 		case 1:
-			iResult = _wcsicmp(file1.pFile->lpFilePath, file2.pFile->lpFilePath);
+			iResult = _wcsicmp(file1.pFile->spFilePath.get(), file2.pFile->spFilePath.get());
 			break;
 		case 2:
 			iResult = _wcsicmp(file1.pFile->lpProjectName, file2.pFile->lpProjectName);
@@ -718,7 +700,7 @@ void CGoToFileDlg::RefreshFileList()
 	Stopwatch stopwatch;
 
 	unsigned int uiProjectIndex = GetSelectedProject();
-	LPCWSTR lpProjectName = uiProjectIndex >= static_cast<unsigned int>(KNOWN_FILTER_COUNT) && uiProjectIndex < static_cast<unsigned int>(KNOWN_FILTER_COUNT) + m_projectNames.size() ? m_projectNames[uiProjectIndex - static_cast<unsigned int>(KNOWN_FILTER_COUNT)] : nullptr;
+	LPCWSTR lpProjectName = uiProjectIndex >= static_cast<unsigned int>(KNOWN_FILTER_COUNT) && uiProjectIndex < static_cast<unsigned int>(KNOWN_FILTER_COUNT) + m_projectNames.size() ? m_projectNames[uiProjectIndex - static_cast<unsigned int>(KNOWN_FILTER_COUNT)].get() : nullptr;
 	const std::vector<SFile>& filesToFilter = uiProjectIndex == static_cast<unsigned int>(KNOWN_FILTER_BROWSE) ? m_browseFiles : m_files;
 
 	LPWSTR lpFilterStringTable = nullptr;
@@ -855,7 +837,7 @@ void CGoToFileDlg::ExploreSelectedFiles()
 	for (SFolderAndSelectedFiles& folderAndSelectedFiles : foldersAndSelectedFiles)
 	{
 		WCHAR iChar;
-		LPWSTR lpFolder = const_cast<LPWSTR>(folderAndSelectedFiles.Folder.lpFilePath);
+		LPWSTR lpFolder = const_cast<LPWSTR>(folderAndSelectedFiles.Folder.spFilePath.get());
 		iChar = lpFolder[folderAndSelectedFiles.Folder.uiFileName];
 		lpFolder[folderAndSelectedFiles.Folder.uiFileName] = L'\0';
 
@@ -869,7 +851,7 @@ void CGoToFileDlg::ExploreSelectedFiles()
 			std::vector<LPITEMIDLIST> itemIds(folderAndSelectedFiles.SelectedFiles.size());
 			for (const SFile* pFile : folderAndSelectedFiles.SelectedFiles)
 			{
-				if (SUCCEEDED(spDesktop->ParseDisplayName(nullptr, nullptr, pFile->lpFilePath, nullptr, &itemIds[uiCount], nullptr)))
+				if (SUCCEEDED(spDesktop->ParseDisplayName(nullptr, nullptr, pFile->spFilePath.get(), nullptr, &itemIds[uiCount], nullptr)))
 				{
 					uiCount++;
 				}
@@ -969,7 +951,7 @@ bool CGoToFileDlg::OpenSelectedFiles()
 				{
 					const SFilteredFile& FilteredFile = m_filteredFiles[iItem];
 
-					CComBSTR spFilePathBStr = SysAllocString(FilteredFile.pFile->lpFilePath);
+					CComBSTR spFilePathBStr = SysAllocString(FilteredFile.pFile->spFilePath.get());
 					if (spFilePathBStr != nullptr)
 					{
 						CComPtr<VxDTE::Window> spWindow;
@@ -1207,10 +1189,10 @@ int CGoToFileDlg::SFilter::Match(const SFile& file) const
 	switch(eSearchField)
 	{
 	case SEARCH_FIELD_FILE_NAME:
-		lpSearch = file.lpFilePath + file.uiFileName;
+		lpSearch = file.spFilePath.get() + file.uiFileName;
 		break;
 	case SEARCH_FIELD_FILE_PATH:
-		lpSearch = file.lpFilePath;
+		lpSearch = file.spFilePath.get();
 		break;
 	case SEARCH_FIELD_PROJECT_NAME:
 		lpSearch = file.lpProjectName;

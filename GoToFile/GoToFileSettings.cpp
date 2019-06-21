@@ -85,11 +85,11 @@ void GoToFileSettings::Store()
 		}
 		else
 		{
-			const std::vector<LPWSTR>& projectNames = goToFileDlg.GetProjectNames();
+			const std::vector<std::unique_ptr<WCHAR[]>>& projectNames = goToFileDlg.GetProjectNames();
 			if (static_cast<size_t>(iItem) >= CGoToFileDlg::KNOWN_FILTER_COUNT && static_cast<size_t>(iItem) < projectNames.size() + CGoToFileDlg::KNOWN_FILTER_COUNT)
 			{
 				iItem -= CGoToFileDlg::KNOWN_FILTER_COUNT;
-				Project = projectNames[iItem];
+				Project = projectNames[iItem].get();
 			}
 		}
 	}
@@ -162,10 +162,10 @@ void GoToFileSettings::Restore()
 					break;
 				}
 			}
-			const std::vector<LPWSTR>& projectNames = goToFileDlg.GetProjectNames();
+			const std::vector<std::unique_ptr<WCHAR[]>>& projectNames = goToFileDlg.GetProjectNames();
 			for (size_t i = 0; i < projectNames.size(); i++)
 			{
-				if (_wcsicmp(Project.c_str(), projectNames[i]) == 0)
+				if (_wcsicmp(Project.c_str(), projectNames[i].get()) == 0)
 				{
 					::SendMessage(ProjectsWindow, CB_SETCURSEL, i + CGoToFileDlg::KNOWN_FILTER_COUNT, 0);
 					break;
