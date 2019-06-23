@@ -212,7 +212,7 @@ void GoToFileSettings::Restore()
 
 void GoToFileSettings::Read()
 {
-	if (!ReadFromKey(c_pwzGoToFileRegLocation))
+	if (!ReadFromKey(c_pwzSoftwareGoToFileRegLocation))
 	{
 		ReadFromKey(c_pwzOpenNowRegLocation);
 	}
