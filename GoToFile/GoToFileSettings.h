@@ -67,14 +67,20 @@ public:
 		m_browsePath = lpBrowsePath;
 	}
 
+	bool IsLoggingEnabled() const
+	{
+		return !!m_bLogging;
+	}
+
 	void Store();
 	void Restore();
 
 	void Read();
 	void Write();
 
-	bool ReadFromKey(LPCWSTR pwzRegKey);
 private:
+	bool ReadFromKey(LPCWSTR pwzRegKey);
+
 	bool m_bRestoring;
 
 	POINT m_location;
@@ -84,6 +90,8 @@ private:
 	long m_iFilePathWidth;
 	long m_iProjectNameWidth;
 	long m_iProjectPathWidth;
+
+	DWORD m_bLogging = false;
 
 	std::wstring m_project;
 	std::wstring m_filter;

@@ -39,7 +39,6 @@ static int CALLBACK BrowseCallback(HWND hwnd,UINT uMsg, LPARAM /*lParam*/, LPARA
 
 int CGoToFileDlg::s_lpSortColumns[CGoToFileDlg::s_iMaxColumns] = { 0, 1, 2, 3 };
 bool CGoToFileDlg::s_bSortDescending = false;
-bool CGoToFileDlg::s_bLogging = true;
 
 CGoToFileDlg::CGoToFileDlg(const CComPtr<VxDTE::_DTE>& spDTE)
 	: m_bInitializing(true)
@@ -47,7 +46,6 @@ CGoToFileDlg::CGoToFileDlg(const CComPtr<VxDTE::_DTE>& spDTE)
 	, m_iInitialSize(0)
 	, m_spDTE(spDTE)
 {
-	InitializeLogFile();
 	CreateFileList();
 }
 
@@ -127,6 +125,9 @@ LRESULT CGoToFileDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	m_settings.Store();
 	m_settings.Read();
 	m_settings.Restore();
+
+	if (m_settings.IsLoggingEnabled())
+		InitializeLogFile();
 
 	if (GetSelectedProject() == static_cast<unsigned int>(KNOWN_FILTER_BROWSE))
 	{
@@ -1304,9 +1305,6 @@ void CGoToFileDlg::InitializeLogFile()
 {
 	static CHAR s_szLogFilePath[MAX_PATH];
 	static bool s_initializedLogFilePath = false;
-
-	if (!s_bLogging)
-		return;
 
 	if (!s_initializedLogFilePath)
 	{

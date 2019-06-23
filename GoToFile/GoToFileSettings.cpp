@@ -246,7 +246,10 @@ bool GoToFileSettings::ReadFromKey(LPCWSTR pwzRegKey)
 
 	uiSize = sizeof(m_eViewKind);
 	RegQueryValueEx(hRegHive, L"ViewKind", NULL, NULL, reinterpret_cast<LPBYTE>(&m_eViewKind), &uiSize);
-	
+
+	uiSize = sizeof(m_bLogging);
+	RegQueryValueEx(hRegHive, L"LoggingEnabled", NULL, NULL, reinterpret_cast<LPBYTE>(&m_bLogging), &uiSize);
+
 	return true;
 }
 
@@ -271,6 +274,7 @@ void GoToFileSettings::Write()
 			RegSetValueEx(hRegHive, L"BrowsePath", 0, REG_SZ, reinterpret_cast<const BYTE *>(m_browsePath.c_str()), !m_browsePath.empty() ? sizeof(WCHAR) * static_cast<DWORD>(m_browsePath.size() + 1) : 0);
 
 			RegSetValueEx(hRegHive, L"ViewKind", 0, REG_DWORD, reinterpret_cast<const LPBYTE>(&m_eViewKind), sizeof(m_eViewKind));
+			RegSetValueEx(hRegHive, L"LoggingEnabled", 0, REG_DWORD, reinterpret_cast<const LPBYTE>(&m_bLogging), sizeof(m_bLogging));
 		}
 	}
 }

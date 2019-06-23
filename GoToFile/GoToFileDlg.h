@@ -37,7 +37,6 @@ public:
 	static constexpr int s_iMaxColumns = 4;
 	static int s_lpSortColumns[s_iMaxColumns];
 	static bool s_bSortDescending;
-	static bool s_bLogging;
 
 	BEGIN_MSG_MAP(CGoToFileDlg)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
