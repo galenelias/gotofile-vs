@@ -74,14 +74,14 @@
       <Button guid="guidGoToFileCmdSet" id="cmdidGotoFile" priority="0x0100" type="Button">
         <Parent guid="guidGoToFileCmdSet" id="MyMenuGroup" />
         <Strings>
-          <ButtonText>Go To File...</ButtonText>
+          <ButtonText>Fast Go To File...</ButtonText>
         </Strings>
       </Button>
 
       <Button guid="guidGoToFileCmdSet" id="cmdidGotoComplementary" priority="0x0101" type="Button">
         <Parent guid="guidGoToFileCmdSet" id="MyMenuGroup" />
         <Strings>
-          <ButtonText>Go To Complementary</ButtonText>
+          <ButtonText>Fast Go To Complementary</ButtonText>
         </Strings>
       </Button>
     </Buttons>
