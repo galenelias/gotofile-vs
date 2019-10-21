@@ -278,6 +278,9 @@ private:
 	std::vector<SFile> m_browseFiles;
 	std::vector<SFilteredFile> m_filteredFiles;
 
+	int m_fileLineDestination = -1;
+	int m_fileColumnDestination = -1;
+
 public:
 	const std::vector<std::unique_ptr<WCHAR[]>>& GetProjectNames() const
 	{
@@ -374,8 +377,7 @@ private:
 		bool bWildcard;
 	};
 
-	void CreateFilterList(std::unique_ptr<WCHAR[]>& spFilterStringTable, std::vector<SFilter>& Filters);
-	void DestroyFilterList(std::unique_ptr<WCHAR[]>& spFilterStringTable, std::vector<SFilter>& Filters);
+	void CreateFilterList(std::unique_ptr<WCHAR[]>& spFilterStringTable, std::vector<SFilter>& Filters, _Out_ int* destinationLine, _Out_ int* destinationColumn);
 
 	static LRESULT CALLBACK FilterProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 

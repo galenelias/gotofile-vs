@@ -706,7 +706,8 @@ void CGoToFileDlg::RefreshFileList()
 
 	std::unique_ptr<WCHAR[]> spFilterStringTable;
 	std::vector<SFilter> filters;
-	CreateFilterList(spFilterStringTable, filters);
+
+	CreateFilterList(spFilterStringTable, filters, &m_fileLineDestination, &m_fileColumnDestination);
 
 	m_filteredFiles.clear();
 	m_filteredFiles.reserve(filesToFilter.size());
@@ -760,8 +761,6 @@ void CGoToFileDlg::RefreshFileList()
 			m_filteredFiles.emplace_back(&file, iMatch);
 		}
 	}
-
-	DestroyFilterList(spFilterStringTable, filters);
 
 	SortFileList();
 
@@ -957,6 +956,18 @@ bool CGoToFileDlg::OpenSelectedFiles()
 					{
 						CComPtr<VxDTE::Window> spWindow;
 						spItemOperations->OpenFile(spFilePathBStr, spViewKindBStr, &spWindow);
+
+						if (m_fileLineDestination != -1)
+						{
+							CComPtr<VxDTE::Document> spDocument;
+							spWindow->get_Document(&spDocument);
+
+							CComPtr<VxDTE::TextSelection> spSelection;
+							spDocument->get_Selection(reinterpret_cast<IDispatch**>(&spSelection));
+							
+							const int columnDestination = (m_fileColumnDestination != -1) ? m_fileColumnDestination : 0;
+							spSelection->MoveToLineAndOffset(m_fileLineDestination, columnDestination);
+						}
 					}
 
 					bResult = true;
@@ -968,10 +979,8 @@ bool CGoToFileDlg::OpenSelectedFiles()
 	return bResult;
 }
 
-void CGoToFileDlg::CreateFilterList(std::unique_ptr<WCHAR[]>& spFilterStringTable, std::vector<SFilter>& filters)
+void CGoToFileDlg::CreateFilterList(std::unique_ptr<WCHAR[]>& spFilterStringTable, std::vector<SFilter>& filters, _Out_ int* destinationLine, _Out_ int* destinationColumn)
 {
-	DestroyFilterList(spFilterStringTable, filters);
-
 	CComBSTR spFilter;
 	GetDlgItem(IDC_FILTER).GetWindowText(&spFilter);
 	if (spFilter)
@@ -1058,6 +1067,31 @@ void CGoToFileDlg::CreateFilterList(std::unique_ptr<WCHAR[]>& spFilterStringTabl
 					continue;
 				}
 				break;
+			case L'(':
+			{
+				// Attempt to parse line number offsets, e.g.  "Foo.cpp(32,10)"
+				LPWSTR pComma = wcschr(pChar, ',');
+				LPWSTR pEnd = wcschr(pChar, ')');
+				if (pEnd != nullptr)
+				{
+					int lineResult = _wtoi(pChar + 1);
+					if (lineResult != 0)
+						*destinationLine = lineResult;
+
+					if (pComma != nullptr && pComma < pEnd)
+					{
+						int colResult = _wtoi(pComma + 1);
+						if (colResult != 0)
+							*destinationColumn = colResult;
+					}
+				}
+
+				// Always stop parsing after we hit the line indicator
+				bParse = false;
+				bDone = true;
+
+				break;
+			}
 			case L' ':
 			case L'\t':
 			case L'\r':
@@ -1095,12 +1129,6 @@ void CGoToFileDlg::CreateFilterList(std::unique_ptr<WCHAR[]>& spFilterStringTabl
 			}
 		}
 	}
-}
-
-void CGoToFileDlg::DestroyFilterList(std::unique_ptr<WCHAR[]>& spFilterStringTable, std::vector<SFilter>& filters)
-{
-	spFilterStringTable.reset();
-	filters.clear();
 }
 
 WCHAR CGoToFileDlg::SFilter::Normalize(WCHAR cChar, ESearchField eSearchField)
