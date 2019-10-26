@@ -36,6 +36,7 @@ The question mark (?) can be used as a single character wildcard.
 
 | Example | Description |
 | ------- | ----------- |
+| substring.cpp(row[,col])	| Opens the selected file navigating to row/col. Useful for opening based on build break output
 | substring .h	| Find all files containing substring in all .h files.
 | substring &#124;.cpp &#124;.h | Find all files containing substring in all .cpp and .h files.
 | substring -.h	| Find all files containing substring in all files except .h files.

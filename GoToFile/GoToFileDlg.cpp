@@ -965,7 +965,7 @@ bool CGoToFileDlg::OpenSelectedFiles()
 							CComPtr<VxDTE::TextSelection> spSelection;
 							spDocument->get_Selection(reinterpret_cast<IDispatch**>(&spSelection));
 							
-							const int columnDestination = (m_fileColumnDestination != -1) ? m_fileColumnDestination : 0;
+							const int columnDestination = (m_fileColumnDestination != -1) ? m_fileColumnDestination : 1;
 							spSelection->MoveToLineAndOffset(m_fileLineDestination, columnDestination);
 						}
 					}
