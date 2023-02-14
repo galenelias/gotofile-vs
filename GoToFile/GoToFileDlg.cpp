@@ -957,7 +957,7 @@ bool CGoToFileDlg::OpenSelectedFiles()
 						CComPtr<VxDTE::Window> spWindow;
 						spItemOperations->OpenFile(spFilePathBStr, spViewKindBStr, &spWindow);
 
-						if (m_fileLineDestination != -1)
+						if (spWindow != nullptr && m_fileLineDestination != -1)
 						{
 							CComPtr<VxDTE::Document> spDocument;
 							spWindow->get_Document(&spDocument);
