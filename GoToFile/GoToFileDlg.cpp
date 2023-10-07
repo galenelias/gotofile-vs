@@ -105,6 +105,8 @@ LRESULT CGoToFileDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	{
 		wndFilter.SetFocus();
 
+		// Enable shell keyboard hooks to get functionality like Ctrl+Backspace to work on our edit box
+		SHAutoComplete(wndFilter, SHACF_AUTOSUGGEST_FORCE_OFF);
 		WNDPROC pWndProc = reinterpret_cast<WNDPROC>(::SetWindowLongPtr(wndFilter, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(CGoToFileDlg::FilterProc)));
 		if (pWndProc)
 		{
