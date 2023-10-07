@@ -105,7 +105,7 @@ LRESULT CGoToFileDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	{
 		wndFilter.SetFocus();
 
-		WNDPROC pWndProc = reinterpret_cast<WNDPROC>(::SetWindowLongPtr(wndFilter, GWL_WNDPROC, reinterpret_cast<LONG_PTR>(CGoToFileDlg::FilterProc)));
+		WNDPROC pWndProc = reinterpret_cast<WNDPROC>(::SetWindowLongPtr(wndFilter, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(CGoToFileDlg::FilterProc)));
 		if (pWndProc)
 		{
 			RegisterWndProc(*this, wndFilter, pWndProc);
@@ -156,7 +156,7 @@ LRESULT CGoToFileDlg::OnDestroy(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& b
 		CGoToFileDlg::SWndProc* pWndProc = CGoToFileDlg::GetWndProc(wndFilter);
 		if (pWndProc)
 		{
-			::SetWindowLongPtr(wndFilter, GWL_WNDPROC, reinterpret_cast<LONG_PTR>(pWndProc->pWndProc));
+			::SetWindowLongPtr(wndFilter, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(pWndProc->pWndProc));
 		}
 	}
 	UnregisterWndProc(this);
@@ -785,7 +785,7 @@ void CGoToFileDlg::RefreshFileList()
 	if (m_files.size() > 0)
 	{
 		WCHAR lpWindowText[128];
-		swprintf_s(lpWindowText, _countof(lpWindowText), L"%s (%u of %u)", lpWindowCaption, m_filteredFiles.size(), m_files.size());
+		swprintf_s(lpWindowText, _countof(lpWindowText), L"%s (%zu of %zu)", lpWindowCaption, m_filteredFiles.size(), m_files.size());
 		SetWindowText(lpWindowText);
 	}
 	else
