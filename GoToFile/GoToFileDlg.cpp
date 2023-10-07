@@ -21,6 +21,9 @@
 #include "stdafx.h"
 #include "GoToFileDlg.h"
 #include "Stopwatch.h"
+#include <string_view>
+#include <iterator>
+#include <optional>
 
 static int CALLBACK BrowseCallback(HWND hwnd,UINT uMsg, LPARAM /*lParam*/, LPARAM lpData)
 {
@@ -107,6 +110,7 @@ LRESULT CGoToFileDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 
 		// Enable shell keyboard hooks to get functionality like Ctrl+Backspace to work on our edit box
 		SHAutoComplete(wndFilter, SHACF_AUTOSUGGEST_FORCE_OFF);
+
 		WNDPROC pWndProc = reinterpret_cast<WNDPROC>(::SetWindowLongPtr(wndFilter, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(CGoToFileDlg::FilterProc)));
 		if (pWndProc)
 		{
@@ -981,7 +985,90 @@ bool CGoToFileDlg::OpenSelectedFiles()
 	return bResult;
 }
 
-void CGoToFileDlg::CreateFilterList(std::unique_ptr<WCHAR[]>& spFilterStringTable, std::vector<SFilter>& filters, _Out_ int* destinationLine, _Out_ int* destinationColumn)
+// Attempt to parse line number offsets, e.g.  "Foo.cpp(32,10)"
+std::tuple<std::wstring_view::size_type, std::optional<int>, std::optional<int>> ParseParenLineAndColumn(std::wstring_view svFilePath)
+{
+	std::optional<int> destinationLine;
+	std::optional<int> destinationColumn;
+	auto posParen = svFilePath.find(L'(');
+
+	if (posParen != svFilePath.npos)
+	{
+		auto posInvalidChar = svFilePath.find_first_not_of(L"0123456789,)", posParen + 1); // Only parse the remainder as a line/column indicator if there are no unexpected characters
+
+		if (posInvalidChar == svFilePath.npos)
+		{
+			int lineResult = _wtoi(svFilePath.data() + posParen + 1);
+			if (lineResult != 0)
+				destinationLine = lineResult;
+
+			auto posComma = svFilePath.find(L',', posParen + 1);
+			if (posComma != svFilePath.npos)
+			{
+				int colResult = _wtoi(svFilePath.data() + posComma + 1);
+				if (colResult != 0)
+					destinationColumn = colResult;
+			}
+		}
+	}
+
+	return { posParen, destinationLine, destinationColumn };
+}
+
+std::tuple<std::wstring_view::size_type, std::optional<int>, std::optional<int>> ParseColonLineAndColumn(std::wstring_view svFilePath)
+{
+	std::optional<int> destinationLine;
+	std::optional<int> destinationColumn;
+
+	auto posColon = svFilePath.find(L':');
+	if (posColon != svFilePath.npos)
+	{
+		auto posInvalidChar = svFilePath.find_first_not_of(L"0123456789:", posColon + 1);  // Only parse the remainder as a line/column indicator if there are no unexpected characters
+
+		if (posInvalidChar == svFilePath.npos)
+		{
+			int lineResult = _wtoi(svFilePath.data() + posColon + 1);
+			if (lineResult != 0)
+				destinationLine = lineResult;
+
+			auto posSecondColon = svFilePath.find(L':', posColon + 1);
+			if (posSecondColon != svFilePath.npos)
+			{
+				int colResult = _wtoi(svFilePath.data() + posSecondColon + 1);
+				if (colResult != 0)
+					destinationColumn = colResult;
+			}
+		}
+	}
+
+	return { posColon, destinationLine, destinationColumn };
+}
+
+void TryParseLineAndColumns(LPWSTR lpStart, LPCWSTR lpEnd, _Out_ int* pDestinationLine, _Out_ int* pDestinationColumn)
+{
+	// Check for line/column indicators in the file path
+	std::wstring_view svFilePath(lpStart, lpEnd - lpStart);
+
+	size_t posParen, posColon;
+	std::optional<int> destinationLine, destinationColumn;
+
+	std::tie(posParen, destinationLine, destinationColumn) = ParseParenLineAndColumn(svFilePath);
+	if (posParen != svFilePath.npos)
+		lpStart[posParen] = '\0';
+
+	std::tie(posColon, destinationLine, destinationColumn) = ParseColonLineAndColumn(svFilePath);
+	if (posColon != svFilePath.npos)
+		lpStart[posColon] = '\0';
+
+	if (destinationLine.has_value())
+		*pDestinationLine = *destinationLine;
+
+	if (destinationColumn.has_value())
+		*pDestinationColumn = *destinationColumn;
+}
+
+
+void CGoToFileDlg::CreateFilterList(std::unique_ptr<WCHAR[]>& spFilterStringTable, std::vector<SFilter>& filters, _Out_ int* pDestinationLine, _Out_ int* pDestinationColumn)
 {
 	CComBSTR spFilter;
 	GetDlgItem(IDC_FILTER).GetWindowText(&spFilter);
@@ -1069,31 +1156,6 @@ void CGoToFileDlg::CreateFilterList(std::unique_ptr<WCHAR[]>& spFilterStringTabl
 					continue;
 				}
 				break;
-			case L'(':
-			{
-				// Attempt to parse line number offsets, e.g.  "Foo.cpp(32,10)"
-				LPWSTR pComma = wcschr(pChar, ',');
-				LPWSTR pEnd = wcschr(pChar, ')');
-				if (pEnd != nullptr)
-				{
-					int lineResult = _wtoi(pChar + 1);
-					if (lineResult != 0)
-						*destinationLine = lineResult;
-
-					if (pComma != nullptr && pComma < pEnd)
-					{
-						int colResult = _wtoi(pComma + 1);
-						if (colResult != 0)
-							*destinationColumn = colResult;
-					}
-				}
-
-				// Always stop parsing after we hit the line indicator
-				bParse = false;
-				bDone = true;
-
-				break;
-			}
 			case L' ':
 			case L'\t':
 			case L'\r':
@@ -1104,6 +1166,7 @@ void CGoToFileDlg::CreateFilterList(std::unique_ptr<WCHAR[]>& spFilterStringTabl
 				}
 				break;
 			}
+
 			if (bDone)
 			{
 				if (lpFilter != nullptr && *lpFilter != L'\0')
@@ -1116,9 +1179,14 @@ void CGoToFileDlg::CreateFilterList(std::unique_ptr<WCHAR[]>& spFilterStringTabl
 					{
 						eLogicOperator = static_cast<ELogicOperator>(eLogicOperator << 1);
 					}
+
 					*pChar = L'\0';
+
+					TryParseLineAndColumns(lpFilter, pChar, pDestinationLine, pDestinationColumn);
+
 					filters.emplace_back(lpFilter, eSearchField, eLogicOperator);
 				}
+
 				lpFilter = nullptr;
 				eSearchField = SEARCH_FIELD_FILE_NAME;
 				eLogicOperator = LOGIC_OPERATOR_NONE;
