@@ -23,7 +23,6 @@
 #include <atlsafe.h>
 
 // Windows Platform headers
-#define NOMINMAX
 #include <windowsx.h> // REVIEW - what is this for?
 
 

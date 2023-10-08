@@ -101,12 +101,11 @@
     </ClCompile>
     <ResourceCompile>
       <AdditionalOptions>-r </AdditionalOptions>
-      <PreprocessorDefinitions>UNICODE;_UNICODE;_X86_=1;i386=1;WIN32;WINNT=1;_DEBUG;DEBUG;_NEW_SDK=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>UNICODE;_UNICODE;WIN32;WINNT=1;_DEBUG;DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <Culture>0x0409</Culture>
       <AdditionalIncludeDirectories>$(VSIntegrationInclude);$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <AdditionalOptions>/MACHINE:I386</AdditionalOptions>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <NoEntryPoint>true</NoEntryPoint>
@@ -129,12 +128,11 @@
     </ClCompile>
     <ResourceCompile>
       <AdditionalOptions>-r </AdditionalOptions>
-      <PreprocessorDefinitions>UNICODE;_UNICODE;_X86_=1;i386=1;WIN32;WINNT=1;_DEBUG;DEBUG;_NEW_SDK=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>UNICODE;_UNICODE;WIN32;WINNT=1;_DEBUG;DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <Culture>0x0409</Culture>
       <AdditionalIncludeDirectories>$(VSIntegrationInclude);$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <AdditionalOptions>/MACHINE:I386</AdditionalOptions>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <NoEntryPoint>true</NoEntryPoint>
@@ -157,12 +155,11 @@
     </ClCompile>
     <ResourceCompile>
       <AdditionalOptions>-r </AdditionalOptions>
-      <PreprocessorDefinitions>UNICODE;_UNICODE;_X86_=1;i386=1;WIN32;WINNT=1;NDEBUG;_NEW_SDK=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>UNICODE;_UNICODE;WIN32;WINNT=1;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <Culture>0x0409</Culture>
       <AdditionalIncludeDirectories>$(VSIntegrationInclude);$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <AdditionalOptions>/MACHINE:I386</AdditionalOptions>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <NoEntryPoint>true</NoEntryPoint>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -181,12 +178,11 @@
     </ClCompile>
     <ResourceCompile>
       <AdditionalOptions>-r </AdditionalOptions>
-      <PreprocessorDefinitions>UNICODE;_UNICODE;_X86_=1;i386=1;WIN32;WINNT=1;NDEBUG;_NEW_SDK=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>UNICODE;_UNICODE;WIN32;WINNT=1;NDEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <Culture>0x0409</Culture>
       <AdditionalIncludeDirectories>$(VSIntegrationInclude);$(IntDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ResourceCompile>
     <Link>
-      <AdditionalOptions>/MACHINE:I386</AdditionalOptions>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <NoEntryPoint>true</NoEntryPoint>
       <GenerateDebugInformation>true</GenerateDebugInformation>
