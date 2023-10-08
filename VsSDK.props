@@ -1,6 +1,6 @@
 ﻿<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Label="UserMacros">
-    <VSIntegrationRoot>C:\Program Files (x86)\Microsoft Visual Studio\2019\Enterprise\VSSDK\VisualStudioIntegration</VSIntegrationRoot>
+    <VSIntegrationRoot>$(VSInstallDir)\VSSDK\VisualStudioIntegration</VSIntegrationRoot>
   </PropertyGroup>
   <PropertyGroup Label="UserMacros">
     <VSIntegrationCommon>$(VSIntegrationRoot)\common</VSIntegrationCommon>
@@ -14,8 +14,11 @@
   <PropertyGroup Label="UserMacros">
     <Office10Include>$(VSIntegrationInclude)\Office10</Office10Include>
   </PropertyGroup>
-  <PropertyGroup Label="UserMacros">
+  <PropertyGroup Label="UserMacros" Condition="'$(Platform)'=='Win32'">
     <VSIntegrationLibraries>$(VSIntegrationCommon)\lib\x86</VSIntegrationLibraries>
+  </PropertyGroup>
+  <PropertyGroup Label="UserMacros" Condition="'$(Platform)'=='x64'">
+    <VSIntegrationLibraries>$(VSIntegrationCommon)\lib\x64</VSIntegrationLibraries>
   </PropertyGroup>
   <PropertyGroup Label="UserMacros">
     <VSLIncludePath>$(VSIntegrationRoot)\Common\Source\CPP\VSL\Include</VSLIncludePath>
