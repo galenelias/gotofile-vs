@@ -377,7 +377,7 @@ private:
 		bool bWildcard;
 	};
 
-	void CreateFilterList(std::unique_ptr<WCHAR[]>& spFilterStringTable, std::vector<SFilter>& Filters, _Out_ int* destinationLine, _Out_ int* destinationColumn);
+	void CreateFilterList(std::unique_ptr<WCHAR[]>& spFilterStringTable, std::vector<SFilter>& Filters, _Inout_ int* destinationLine, _Inout_ int* destinationColumn);
 
 	static LRESULT CALLBACK FilterProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 

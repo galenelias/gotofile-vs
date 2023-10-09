@@ -1049,16 +1049,21 @@ void TryParseLineAndColumns(LPWSTR lpStart, LPCWSTR lpEnd, _Out_ int* pDestinati
 	// Check for line/column indicators in the file path
 	std::wstring_view svFilePath(lpStart, lpEnd - lpStart);
 
-	size_t posParen, posColon;
+	size_t posParen;
 	std::optional<int> destinationLine, destinationColumn;
 
 	std::tie(posParen, destinationLine, destinationColumn) = ParseParenLineAndColumn(svFilePath);
 	if (posParen != svFilePath.npos)
+	{
 		lpStart[posParen] = '\0';
-
-	std::tie(posColon, destinationLine, destinationColumn) = ParseColonLineAndColumn(svFilePath);
-	if (posColon != svFilePath.npos)
-		lpStart[posColon] = '\0';
+	}
+	else
+	{
+		size_t posColon;
+		std::tie(posColon, destinationLine, destinationColumn) = ParseColonLineAndColumn(svFilePath);
+		if (posColon != svFilePath.npos)
+			lpStart[posColon] = '\0';
+	}
 
 	if (destinationLine.has_value())
 		*pDestinationLine = *destinationLine;
@@ -1068,7 +1073,7 @@ void TryParseLineAndColumns(LPWSTR lpStart, LPCWSTR lpEnd, _Out_ int* pDestinati
 }
 
 
-void CGoToFileDlg::CreateFilterList(std::unique_ptr<WCHAR[]>& spFilterStringTable, std::vector<SFilter>& filters, _Out_ int* pDestinationLine, _Out_ int* pDestinationColumn)
+void CGoToFileDlg::CreateFilterList(std::unique_ptr<WCHAR[]>& spFilterStringTable, std::vector<SFilter>& filters, _Inout_ int* pDestinationLine, _Inout_ int* pDestinationColumn)
 {
 	CComBSTR spFilter;
 	GetDlgItem(IDC_FILTER).GetWindowText(&spFilter);
