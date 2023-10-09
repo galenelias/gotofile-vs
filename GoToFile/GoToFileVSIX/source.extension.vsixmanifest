@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="1e71bec8-aa0c-4a7b-9379-41626a29c69e" Version="1.1" Language="en-US" Publisher="Galen Elias" />
+        <Identity Id="1e71bec8-aa0c-4a7b-9379-41626a29c69e" Version="1.2" Language="en-US" Publisher="Galen Elias" />
         <DisplayName>FastGoToFile</DisplayName>
         <Description xml:space="preserve">Extension to enable quickly jumping to a file in the solution</Description>
         <MoreInfo>https://github.com/galenelias/gotofile-vs</MoreInfo>
