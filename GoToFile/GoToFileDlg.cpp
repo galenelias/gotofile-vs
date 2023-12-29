@@ -385,19 +385,24 @@ HICON CGoToFileDlg::LoadIcon(int iID, int iWidth, int iHeight)
 	return nullptr;
 }
 
-static WCHAR s_isProjectItemKindPhysicalFileInitialized = false;
 static WCHAR s_lpProjectItemKindPhysicalFile[MAX_PATH + 1];
+static WCHAR s_lpProjectItemKindSolutionItemFile[MAX_PATH + 1];
+static WCHAR s_isProjectKindsInitialized = false;
 
 void CGoToFileDlg::CreateFileList()
 {
 	DestroyFileList();
 
-	// Get a wide string version of vsProjectItemKindPhysicalFile, but only do the conversion once
-	if (!s_isProjectItemKindPhysicalFileInitialized)
+	// Get a wide string version of the specific project kinds we care about, but only do the conversion once
+	if (!s_isProjectKindsInitialized)
 	{
 		MultiByteToWideChar(CP_ACP, 0, VxDTE::vsProjectItemKindPhysicalFile, -1, s_lpProjectItemKindPhysicalFile, MAX_PATH + 1);
 		s_lpProjectItemKindPhysicalFile[MAX_PATH] = '\0';
-		s_isProjectItemKindPhysicalFileInitialized = true;
+		
+		MultiByteToWideChar(CP_ACP, 0, VxDTE::vsProjectItemKindSolutionItems, -1, s_lpProjectItemKindSolutionItemFile, MAX_PATH + 1);
+		s_lpProjectItemKindSolutionItemFile[MAX_PATH] = '\0';
+
+		s_isProjectKindsInitialized = true;
 	}
 
 	CComPtr<VxDTE::_Solution> spSolution;
@@ -454,15 +459,40 @@ void CGoToFileDlg::CreateFileList(SName<std::vector<std::unique_ptr<WCHAR[]>>>& 
 				CComBSTR spKind = nullptr;
 				if (SUCCEEDED(spProjectItem->get_Kind(&spKind)) && spKind)
 				{
-					if (_wcsicmp(spKind, s_lpProjectItemKindPhysicalFile) == 0)
+					// Solution Level Items show up as different kind than physical files, despite being physical files
+					if (_wcsicmp(spKind, s_lpProjectItemKindPhysicalFile) == 0
+						|| _wcsicmp(spKind, s_lpProjectItemKindSolutionItemFile) == 0)
 					{
+						short fileCount = 0;
+						[[maybe_unused]] HRESULT hr = spProjectItem->get_FileCount(&fileCount);
+
 						CComBSTR spFilePath = nullptr;
-						if (SUCCEEDED(spProjectItem->get_FileNames(0, &spFilePath)) && spFilePath)
+						if (SUCCEEDED(spProjectItem->get_FileNames(1, &spFilePath)) && spFilePath)
 						{
 							const size_t cchFilePath = wcslen(spFilePath) + 1;
 							std::unique_ptr<WCHAR[]> spFilePathCopy = std::make_unique<WCHAR[]>(cchFilePath);
 							wcscpy_s(spFilePathCopy.get(), cchFilePath, spFilePath);
 							m_files.emplace_back(std::move(spFilePathCopy), projectName.GetName(), parentProjectPath.GetName());
+						}
+
+						// Sub-folders under Solution Items appear as SubProjects, but we want to treat them more like just a tradtional hierarchy item
+						// so expand them explicitly here
+						if (spFilePath == nullptr && _wcsicmp(spKind, s_lpProjectItemKindSolutionItemFile) == 0)
+						{
+							CComPtr<VxDTE::Project> spProject;
+							if (SUCCEEDED(spProjectItem->get_SubProject(&spProject)) && spProject)
+							{
+								CComBSTR spProjectName;
+								if (SUCCEEDED(spProject->get_Name(&spProjectName)) && spProjectName)
+								{
+									CComPtr<VxDTE::ProjectItems> spProjectItems;
+									if (SUCCEEDED(spProject->get_ProjectItems(&spProjectItems)) && spProjectItems)
+									{
+										SName<std::vector<std::unique_ptr<WCHAR[]>>> projectPath(parentProjectPath, spProjectName);
+										CreateFileList(projectName, projectPath, spProjectItems);
+									}
+								}
+							}
 						}
 					}
 					else
