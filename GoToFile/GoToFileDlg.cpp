@@ -20,6 +20,7 @@
 
 #include "stdafx.h"
 #include "GoToFileDlg.h"
+#include "SelectProjectsDlg.h"
 #include "Stopwatch.h"
 #include <string_view>
 #include <iterator>
@@ -344,6 +345,15 @@ LRESULT CGoToFileDlg::OnSelChangedProjects(WORD /*wNotifyCode*/, WORD /*wID*/, H
 		{
 			CreateBrowseFileList();
 		}
+		else if (GetSelectedProject() == static_cast<unsigned int>(KNOWN_FILTER_SELECT_PROJECTS))
+		{
+			CSelectProjectsDlg selectProjectsDlg(m_projectNames, m_selectedProjects);
+			if (selectProjectsDlg.DoModal() == IDOK)
+			{
+				m_selectedProjects = selectProjectsDlg.GetSelectedProjects();
+			}
+		}
+
 		RefreshFileList();
 	}
 	return 0;
@@ -609,6 +619,7 @@ LPCWSTR CGoToFileDlg::GetKnownFilterName(EKnownFilter eKnownFilter) const
 	{
 		L"<All Projects>",
 		L"<Browse...>",
+		L"<Select Projects...>",
 	};
 	if (eKnownFilter >= 0 && eKnownFilter < KNOWN_FILTER_COUNT)
 	{
@@ -630,6 +641,36 @@ unsigned int CGoToFileDlg::GetSelectedProject()
 	}
 	return 0;
 }
+
+const std::optional<std::vector<const WCHAR*>>& CGoToFileDlg::GetSelectedProjects() const
+{
+	return m_selectedProjects;
+}
+
+
+void CGoToFileDlg::SetSelectedProjects(const std::vector<std::wstring_view>& selectedProjectsViews)
+{
+	// For each project in 'selectedProjectsVector', find the index of the project in 'm_projectNames' and set the corresponding index in 'm_selectedProjects' to true
+	m_selectedProjects.reset();
+	std::vector<const WCHAR*> selectedProjects;
+	for (const auto& selectedProject : selectedProjectsViews)
+	{
+		for (size_t i = 0; i < m_projectNames.size(); ++i)
+		{
+			if (selectedProject == m_projectNames[i].get())
+			{
+				selectedProjects.push_back(m_projectNames[i].get());
+				break;
+			}
+		}
+	}
+
+	if (!selectedProjects.empty())
+	{
+		m_selectedProjects = std::move(selectedProjects);
+	}
+}
+
 
 static bool CompareProjects(const std::unique_ptr<WCHAR[]>& spProject1, const std::unique_ptr<WCHAR[]>& spProject2)
 {
@@ -660,6 +701,11 @@ void CGoToFileDlg::RefreshProjectList()
 	::SendMessage(hProjects, CBEM_INSERTITEM, 0, reinterpret_cast<LPARAM>(&Item));
 
 	Item.pszText = const_cast<LPWSTR>(GetKnownFilterName(KNOWN_FILTER_BROWSE));
+	Item.cchTextMax = static_cast<int>(wcslen(Item.pszText));
+	Item.iItem++;
+	::SendMessage(hProjects, CBEM_INSERTITEM, 0, reinterpret_cast<LPARAM>(&Item));
+
+	Item.pszText = const_cast<LPWSTR>(GetKnownFilterName(KNOWN_FILTER_SELECT_PROJECTS));
 	Item.cchTextMax = static_cast<int>(wcslen(Item.pszText));
 	Item.iItem++;
 	::SendMessage(hProjects, CBEM_INSERTITEM, 0, reinterpret_cast<LPARAM>(&Item));
@@ -740,6 +786,15 @@ void CGoToFileDlg::RefreshFileList()
 	LPCWSTR lpProjectName = uiProjectIndex >= static_cast<unsigned int>(KNOWN_FILTER_COUNT) && uiProjectIndex < static_cast<unsigned int>(KNOWN_FILTER_COUNT) + m_projectNames.size() ? m_projectNames[uiProjectIndex - static_cast<unsigned int>(KNOWN_FILTER_COUNT)].get() : nullptr;
 	const std::vector<SFile>& filesToFilter = uiProjectIndex == static_cast<unsigned int>(KNOWN_FILTER_BROWSE) ? m_browseFiles : m_files;
 
+	bool filterOnSelectedProjects = false;
+	if (uiProjectIndex == KNOWN_FILTER_SELECT_PROJECTS)
+	{
+		if (m_selectedProjects.has_value())
+		{
+			filterOnSelectedProjects = true;
+		}
+	}
+
 	std::unique_ptr<WCHAR[]> spFilterStringTable;
 	std::vector<SFilter> filters;
 
@@ -760,6 +815,14 @@ void CGoToFileDlg::RefreshFileList()
 		if (lpProjectName != nullptr && file.lpProjectName != lpProjectName)
 		{
 			continue;
+		}
+
+		if (filterOnSelectedProjects)
+		{
+			if (std::find(m_selectedProjects->begin(), m_selectedProjects->end(), file.lpProjectName) == m_selectedProjects->end())
+			{
+				continue;
+			}
 		}
 
 		int iMatch = -1;

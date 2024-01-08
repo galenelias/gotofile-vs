@@ -84,6 +84,17 @@ BEGIN
     PUSHBUTTON      "&Explore",IDC_EXPLORE,235,279,50,14
 END
 
+IDD_SELECT_PROJECTS DIALOGEX 0, 0, 187, 176
+STYLE DS_SETFONT | DS_MODALFRAME | DS_FIXEDSYS | WS_POPUP | WS_CAPTION | WS_SYSMENU
+CAPTION "Select Projects..."
+FONT 8, "MS Shell Dlg", 400, 0, 0x1
+BEGIN
+    DEFPUSHBUTTON   "OK",IDOK,76,155,50,14
+    PUSHBUTTON      "Cancel",IDCANCEL,130,155,50,14
+    CONTROL         "",IDC_PROJECTS,"SysListView32",LVS_LIST | LVS_ALIGNLEFT | WS_BORDER | WS_TABSTOP,7,26,173,121
+    PUSHBUTTON      "Select All / None",IDC_BTN_SELECT_ALL_NONE,7,7,68,14
+END
+
 
 /////////////////////////////////////////////////////////////////////////////
 //
@@ -96,8 +107,27 @@ BEGIN
     IDD_GOTOFILE, DIALOG
     BEGIN
     END
+
+    IDD_SELECT_PROJECTS, DIALOG
+    BEGIN
+        LEFTMARGIN, 7
+        RIGHTMARGIN, 180
+        TOPMARGIN, 7
+        BOTTOMMARGIN, 169
+    END
 END
 #endif    // APSTUDIO_INVOKED
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// AFX_DIALOG_LAYOUT
+//
+
+IDD_SELECT_PROJECTS AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
 
 
 /////////////////////////////////////////////////////////////////////////////

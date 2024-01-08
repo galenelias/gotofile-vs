@@ -25,6 +25,7 @@
 #include "GoToFileSettings.h"
 #include "..\GoToFileUI\Resource.h"
 #include <fstream>  // std::ofstream
+#include <optional>
 
 class CGoToFileDlg : public CAxDialogImpl<CGoToFileDlg>
 {
@@ -133,7 +134,7 @@ private:
 			}
 		}
 
-	private:
+private:
 		HWND hWindow;
 		EAnchor eAnchor;
 		RECT Rect;
@@ -228,6 +229,7 @@ private:
 
 	unsigned int GetSelectedProject();
 
+
 	void RefreshProjectList();
 
 	void SortFileList();
@@ -277,6 +279,7 @@ private:
 	std::vector<SFile> m_files;
 	std::vector<SFile> m_browseFiles;
 	std::vector<SFilteredFile> m_filteredFiles;
+	std::optional<std::vector<const WCHAR*>> m_selectedProjects;
 
 	int m_fileLineDestination = -1;
 	int m_fileColumnDestination = -1;
@@ -287,10 +290,14 @@ public:
 		return m_projectNames;
 	}
 
+	void SetSelectedProjects(const std::vector<std::wstring_view>& selectedProjects);
+	const std::optional<std::vector<const WCHAR*>>& GetSelectedProjects() const;
+
 	enum EKnownFilter
 	{
 		KNOWN_FILTER_ALL_PROJECTS = 0,
 		KNOWN_FILTER_BROWSE,
+		KNOWN_FILTER_SELECT_PROJECTS,
 		KNOWN_FILTER_COUNT
 	};
 

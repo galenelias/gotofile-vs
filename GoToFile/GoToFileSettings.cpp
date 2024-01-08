@@ -111,6 +111,20 @@ void GoToFileSettings::Store()
 		}
 	}
 
+	m_selectedProjects.clear();
+	const std::optional<std::vector<const WCHAR*>>& optSelectedProjects = goToFileDlg.GetSelectedProjects();
+	if (optSelectedProjects.has_value())
+	{
+		const std::vector<const WCHAR*>& selectedProjects = optSelectedProjects.value();
+		for (size_t i = 0; i < selectedProjects.size(); i++)
+		{
+			if (i > 0)
+				m_selectedProjects += L'\0';
+
+			m_selectedProjects += selectedProjects[i];
+		}
+	}
+
 	m_filter.clear();
 
 	CWindow wndFilter = goToFileDlg.GetDlgItem(IDC_FILTER);
@@ -129,6 +143,23 @@ void GoToFileSettings::Store()
 	{
 		m_eViewKind = Button_GetCheck(wndViewCode) ? VIEW_KIND_CODE : VIEW_KIND_PRIMARY;
 	}
+}
+
+static std::vector<std::wstring_view> SplitString(std::wstring_view str, WCHAR delimiter)
+{
+	std::vector<std::wstring_view> result;
+
+	size_t pos = 0;
+	while ((pos = str.find(delimiter)) != std::wstring_view::npos)
+	{
+		result.push_back(str.substr(0, pos));
+		str.remove_prefix(pos + 1);
+	}
+
+	if (!str.empty())
+		result.push_back(str);
+
+	return result;
 }
 
 void GoToFileSettings::Restore()
@@ -162,6 +193,8 @@ void GoToFileSettings::Restore()
 		ListView_SetColumn(wndFiles, 3, &Column);
 	}
 
+	goToFileDlg.SetSelectedProjects(SplitString(m_selectedProjects, '\0'));
+
 	if (!m_project.empty())
 	{
 		CWindow wndProjects= goToFileDlg.GetDlgItem(IDC_PROJECTS);
@@ -170,9 +203,12 @@ void GoToFileSettings::Restore()
 			for (int i = 0; i < CGoToFileDlg::KNOWN_FILTER_COUNT; i++)
 			{
 				if (i == CGoToFileDlg::KNOWN_FILTER_BROWSE && m_browsePath.empty())
-				{
 					continue;
-				}
+
+				// If none of our loaded project filters matched the loaded solution, then don't select 'Select Projects...'
+				if (i == CGoToFileDlg::KNOWN_FILTER_SELECT_PROJECTS && !goToFileDlg.GetSelectedProjects().has_value())
+					continue;
+
 				if (_wcsicmp(m_project.c_str(), goToFileDlg.GetKnownFilterName(static_cast<CGoToFileDlg::EKnownFilter>(i))) == 0)
 				{
 					::SendMessage(wndProjects, CB_SETCURSEL, i, 0);
@@ -241,6 +277,7 @@ bool GoToFileSettings::ReadFromKey(LPCWSTR pwzRegKey)
 	RegQueryValueEx(hRegHive, L"ProjectPathWidth", NULL, NULL, reinterpret_cast<LPBYTE>(&m_iProjectPathWidth), &uiSize);
 
 	m_project = ReadWstringFromRegistry(hRegHive, L"Project");
+	m_selectedProjects = ReadWstringFromRegistry(hRegHive, L"SelectedProjects");
 	m_filter = ReadWstringFromRegistry(hRegHive, L"Filter");
 	m_browsePath = ReadWstringFromRegistry(hRegHive, L"BrowsePath");
 
@@ -275,6 +312,9 @@ void GoToFileSettings::Write()
 
 			RegSetValueEx(hRegHive, L"ViewKind", 0, REG_DWORD, reinterpret_cast<const LPBYTE>(&m_eViewKind), sizeof(m_eViewKind));
 			RegSetValueEx(hRegHive, L"LoggingEnabled", 0, REG_DWORD, reinterpret_cast<const LPBYTE>(&m_bLogging), sizeof(m_bLogging));
+
+			if (!m_selectedProjects.empty())
+				RegSetValueEx(hRegHive, L"SelectedProjects", 0, REG_MULTI_SZ, reinterpret_cast<const BYTE *>(m_selectedProjects.c_str()), sizeof(WCHAR) * static_cast<DWORD>(m_selectedProjects.size() + 1));
 		}
 	}
 }

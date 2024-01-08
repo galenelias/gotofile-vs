@@ -94,6 +94,7 @@ private:
 	DWORD m_bLogging = false;
 
 	std::wstring m_project;
+	std::wstring m_selectedProjects;
 	std::wstring m_filter;
 	std::wstring m_browsePath;
 	EViewKind m_eViewKind;
