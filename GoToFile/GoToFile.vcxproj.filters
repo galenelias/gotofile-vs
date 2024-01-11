@@ -71,6 +71,9 @@
     <ClInclude Include="SelectProjectsDlg.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="WindowAnchor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Midl Include="GoToFile.idl">

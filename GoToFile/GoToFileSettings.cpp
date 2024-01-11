@@ -41,8 +41,8 @@ static std::wstring ReadWstringFromRegistry(HKEY hRegHive, LPCWSTR pwzName)
 
 void GoToFileSettings::Store()
 {
-	const int iDesktopWidth = GetSystemMetrics(SM_CXMAXTRACK);
-	const int iDesktopHeight = GetSystemMetrics(SM_CYMAXTRACK);
+	const LONG iDesktopWidth = static_cast<LONG>(GetSystemMetrics(SM_CXMAXTRACK));
+	const LONG iDesktopHeight = static_cast<LONG>(GetSystemMetrics(SM_CYMAXTRACK));
 
 	RECT rect;
 	if (GetWindowRect(goToFileDlg, &rect))
@@ -53,21 +53,13 @@ void GoToFileSettings::Store()
 		m_size.cy = rect.bottom - rect.top;
 
 		if (m_location.x > iDesktopWidth)
-		{
 			m_location.x = iDesktopWidth - goToFileDlg.GetInitialWidth();
-		}
+
 		if (m_location.y > iDesktopHeight)
-		{
 			m_location.y = iDesktopHeight - goToFileDlg.GetInitialHeight();
-		}
-		if (m_size.cx > iDesktopWidth)
-		{
-			m_size.cx = iDesktopWidth;
-		}
-		if (m_size.cy > iDesktopHeight)
-		{
-			m_size.cy = iDesktopHeight;
-		}
+
+		m_size.cx = std::min(m_size.cx, iDesktopWidth);
+		m_size.cy = std::min(m_size.cy, iDesktopHeight);
 	}
 
 	CWindow wndFiles = goToFileDlg.GetDlgItem(IDC_FILES);
@@ -287,6 +279,8 @@ bool GoToFileSettings::ReadFromKey(LPCWSTR pwzRegKey)
 	uiSize = sizeof(m_bLogging);
 	RegQueryValueEx(hRegHive, L"LoggingEnabled", NULL, NULL, reinterpret_cast<LPBYTE>(&m_bLogging), &uiSize);
 
+	RegCloseKey(hRegHive);
+
 	return true;
 }
 
@@ -315,6 +309,9 @@ void GoToFileSettings::Write()
 
 			if (!m_selectedProjects.empty())
 				RegSetValueEx(hRegHive, L"SelectedProjects", 0, REG_MULTI_SZ, reinterpret_cast<const BYTE *>(m_selectedProjects.c_str()), sizeof(WCHAR) * static_cast<DWORD>(m_selectedProjects.size() + 1));
+
+			RegCloseKey(hRegHive);
 		}
+		RegCloseKey(hSoftware);
 	}
 }

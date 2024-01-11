@@ -29,6 +29,9 @@
 
 #include "SelectProjectsDlg.h"
 
+extern const WCHAR* c_pwzSoftwareGoToFileRegLocation;
+extern const WCHAR* c_pwzGoToFileRegLocation;
+
 CSelectProjectsDlg::CSelectProjectsDlg(const std::vector<std::unique_ptr<WCHAR[]>>& projectNames, const std::optional<std::vector<const WCHAR*>>& selectedProjects)
 	: m_allProjectNames(projectNames)
 {
@@ -90,18 +93,114 @@ LRESULT CSelectProjectsDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam
 		ListView_SetCheckState(hwndProjectsList, static_cast<int>(index), m_selectedProjects[index]);
 	}
 
+	RECT clientRect;
+	if (GetClientRect(&clientRect))
+	{
+		m_iInitialWidth = static_cast<WORD>(clientRect.right - clientRect.left);
+		m_iInitialHeight = static_cast<WORD>(clientRect.bottom - clientRect.top);
+	}
+
+	m_projectsAnchor.Init(*this, hwndProjectsList, EAnchor::Top | EAnchor::Bottom | EAnchor::Left | EAnchor::Right);
+	m_okAnchor.Init(*this, GetDlgItem(IDOK), EAnchor::Bottom | EAnchor::Right);
+	m_cancelAnchor.Init(*this, GetDlgItem(IDCANCEL), EAnchor::Bottom | EAnchor::Right);
+
+	RestoreDialogSize();
+
 	return 0;
+}
+
+LRESULT CSelectProjectsDlg::OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BOOL& bHandled)
+{
+	const LONG iWidth = static_cast<LONG>(LOWORD(lParam));
+	const LONG iHeight = static_cast<LONG>(HIWORD(lParam));
+
+	const LONG iDeltaX = iWidth - m_iInitialWidth;
+	const LONG iDeltaY = iHeight - m_iInitialHeight;
+
+	m_projectsAnchor.Update(iDeltaX, iDeltaY);
+	m_okAnchor.Update(iDeltaX, iDeltaY);
+	m_cancelAnchor.Update(iDeltaX, iDeltaY);
+	Invalidate();
+
+	bHandled = TRUE;
+	return 0;
+}
+
+void CSelectProjectsDlg::StoreDialogSize()
+{
+	RECT rect;
+	if (GetWindowRect(&rect))
+	{
+		const LONG desktopWidth = static_cast<LONG>(GetSystemMetrics(SM_CXMAXTRACK));
+		const LONG desktopHeight = static_cast<LONG>(GetSystemMetrics(SM_CYMAXTRACK));
+
+		POINT location{ rect.left, rect.top };
+		SIZE size{ rect.right - rect.left, rect.bottom - rect.top };
+
+		if (location.x > desktopWidth)
+			location.x = desktopWidth - m_iInitialWidth;
+
+		if (location.y > desktopHeight)
+			location.y = desktopHeight - m_iInitialHeight;
+
+		size.cx = std::min(size.cx, desktopWidth);
+		size.cy = std::min(size.cy, desktopHeight);
+
+		HKEY hSoftware;
+		if (RegOpenKeyEx(HKEY_CURRENT_USER, L"Software", 0, KEY_WRITE, &hSoftware) == ERROR_SUCCESS)
+		{
+			HKEY hRegHive;
+			if (RegCreateKeyEx(hSoftware, c_pwzGoToFileRegLocation, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_WRITE, NULL, &hRegHive, NULL) == ERROR_SUCCESS)
+			{
+				RegSetValueEx(hRegHive, L"ProjectsDlgLocation", 0, REG_BINARY, reinterpret_cast<const LPBYTE>(&location), sizeof(location));
+				RegSetValueEx(hRegHive, L"ProjectsDlgSize", 0, REG_BINARY, reinterpret_cast<const LPBYTE>(&size), sizeof(size));
+				RegCloseKey(hRegHive);
+			}
+			RegCloseKey(hSoftware);
+		}
+	}
+}
+
+void CSelectProjectsDlg::RestoreDialogSize()
+{
+	HKEY hRegHive;
+	if (RegOpenKeyExW(HKEY_CURRENT_USER, c_pwzSoftwareGoToFileRegLocation, 0, KEY_READ, &hRegHive) == ERROR_SUCCESS)
+	{
+		POINT location;
+		SIZE size;
+
+		DWORD uiSize = sizeof(location);
+		if (RegQueryValueEx(hRegHive, L"ProjectsDlgLocation", NULL, NULL, reinterpret_cast<LPBYTE>(&location), &uiSize) != ERROR_SUCCESS)
+			return;
+
+		uiSize = sizeof(size);
+		if (RegQueryValueEx(hRegHive, L"ProjectsDlgSize", NULL, NULL, reinterpret_cast<LPBYTE>(&size), &uiSize) != ERROR_SUCCESS)
+			return;
+
+		RECT rect;
+		rect.left = location.x;
+		rect.top = location.y;
+		rect.right = rect.left + size.cx;
+		rect.bottom = rect.top + size.cy;
+		MoveWindow(&rect);
+
+		RegCloseKey(hRegHive);
+	}
 }
 
 
 LRESULT CSelectProjectsDlg::OnClickedOk(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 {
+	StoreDialogSize();
+
 	EndDialog(wID);
 	return 0;
 }
 
 LRESULT CSelectProjectsDlg::OnClickedCancel(WORD /*wNotifyCode*/, WORD wID, HWND /*hWndCtl*/, BOOL& /*bHandled*/)
 {
+	StoreDialogSize();
+
 	EndDialog(wID);
 	return 0;
 }

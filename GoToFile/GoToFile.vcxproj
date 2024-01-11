@@ -325,6 +325,7 @@
     <ClInclude Include="SelectProjectsDlg.h" />
     <ClInclude Include="StdAfx.h" />
     <ClInclude Include="Stopwatch.h" />
+    <ClInclude Include="WindowAnchor.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="GoToFile.rc" />

@@ -23,6 +23,7 @@
 #include "stdafx.h"
 #include "dte.h"
 #include "GoToFileSettings.h"
+#include "WindowAnchor.h"
 #include "..\GoToFileUI\Resource.h"
 #include <fstream>  // std::ofstream
 #include <optional>
@@ -72,75 +73,15 @@ public:
 	LRESULT OnGetDispInfoProjects(int idCtrl, LPNMHDR pNHM, BOOL& bHandled);
 	LRESULT OnSelChangedProjects(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 
-	LONG GetInitialWidth() const
-	{
-		return static_cast<LONG>(LOWORD(m_iInitialSize));
-	}
-
-	LONG GetInitialHeight() const
-	{
-		return static_cast<LONG>(HIWORD(m_iInitialSize));
-	}
+	LONG GetInitialWidth() const { return m_iInitialWidth; }
+	LONG GetInitialHeight() const { return m_iInitialHeight; }
 
 private:
 	bool m_bInitializing;
 	GoToFileSettings m_settings;
 
-	enum EAnchor
-	{
-		ANCHOR_NONE = 0x00,
-		ANCHOR_TOP = 0x01,
-		ANCHOR_BOTTOM = 0x02,
-		ANCHOR_LEFT = 0x04,
-		ANCHOR_RIGHT = 0x08
-	};
-
-	struct SAnchor 
-	{
-		SAnchor()
-			: hWindow(0), eAnchor(ANCHOR_NONE)
-		{ }
-
-		void Init(HWND hParent, HWND hWindowParam, EAnchor eAnchorParam)
-		{
-			this->hWindow = hWindowParam;
-			this->eAnchor = eAnchorParam;
-
-			::GetWindowRect(hWindow, &Rect);
-			::MapWindowPoints(HWND_DESKTOP, hParent, reinterpret_cast<LPPOINT>(&Rect), 2);
-		}
-
-		void Adjust(RECT& RectParam)
-		{
-			this->Rect.right = this->Rect.left + (RectParam.right - RectParam.left);
-			this->Rect.bottom = this->Rect.top + (RectParam.bottom - RectParam.top);
-		}
-
-		void Update(LONG iDeltaX, LONG iDeltaY)
-		{
-			if (hWindow)
-			{
-				RECT NewRect = Rect;
-				if ((eAnchor & ANCHOR_TOP) == 0)
-					NewRect.top += iDeltaY;
-				if ((eAnchor & ANCHOR_BOTTOM) != 0)
-					NewRect.bottom += iDeltaY;
-				if ((eAnchor & ANCHOR_LEFT) == 0)
-					NewRect.left += iDeltaX;
-				if ((eAnchor & ANCHOR_RIGHT) != 0)
-					NewRect.right += iDeltaX;
-
-				::MoveWindow(hWindow, NewRect.left, NewRect.top, NewRect.right - NewRect.left, NewRect.bottom - NewRect.top, TRUE);
-			}
-		}
-
-private:
-		HWND hWindow;
-		EAnchor eAnchor;
-		RECT Rect;
-	};
-
-	LONG m_iInitialSize;
+	LONG m_iInitialWidth = 0;
+	LONG m_iInitialHeight = 0;
 	SAnchor m_filesAnchor;
 	SAnchor m_filterAnchor;
 	SAnchor m_projectsAnchor;

@@ -47,7 +47,6 @@ bool CGoToFileDlg::s_bSortDescending = false;
 CGoToFileDlg::CGoToFileDlg(const CComPtr<VxDTE::_DTE>& spDTE)
 	: m_bInitializing(true)
 	, m_settings(*this)
-	, m_iInitialSize(0)
 	, m_spDTE(spDTE)
 {
 	CreateFileList();
@@ -99,9 +98,8 @@ LRESULT CGoToFileDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	RECT clientRect;
 	if (GetClientRect(&clientRect))
 	{
-		WORD uiInitialWidth = static_cast<WORD>(clientRect.right - clientRect.left);
-		WORD uiInitialHeight = static_cast<WORD>(clientRect.bottom - clientRect.top);
-		m_iInitialSize = MAKELONG(uiInitialWidth, uiInitialHeight);
+		m_iInitialWidth = static_cast<WORD>(clientRect.right - clientRect.left);
+		m_iInitialHeight = static_cast<WORD>(clientRect.bottom - clientRect.top);
 	}
 
 	CWindow wndFilter = GetDlgItem(IDC_FILTER);
@@ -119,13 +117,13 @@ LRESULT CGoToFileDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 		}
 	}
 
-	m_filesAnchor.Init(*this, wndFiles, static_cast<EAnchor>(ANCHOR_TOP | ANCHOR_BOTTOM | ANCHOR_LEFT | ANCHOR_RIGHT));
-	m_filterAnchor.Init(*this, wndFilter, static_cast<EAnchor>(ANCHOR_BOTTOM | ANCHOR_LEFT | ANCHOR_RIGHT));
-	m_projectsAnchor.Init(*this, GetDlgItem(IDC_PROJECTS), static_cast<EAnchor>(ANCHOR_TOP | ANCHOR_LEFT | ANCHOR_RIGHT));
-	m_viewCodeAnchor.Init(*this, GetDlgItem(IDC_VIEWCODE), static_cast<EAnchor>(ANCHOR_BOTTOM | ANCHOR_LEFT));
-	m_exploreAnchor.Init(*this, GetDlgItem(IDC_EXPLORE), static_cast<EAnchor>(ANCHOR_BOTTOM | ANCHOR_RIGHT));
-	m_openAnchor.Init(*this, GetDlgItem(IDOK), static_cast<EAnchor>(ANCHOR_BOTTOM | ANCHOR_RIGHT));
-	m_cancelAnchor.Init(*this, GetDlgItem(IDCANCEL), static_cast<EAnchor>(ANCHOR_BOTTOM | ANCHOR_RIGHT));
+	m_filesAnchor.Init(*this, wndFiles, EAnchor::Top | EAnchor::Bottom | EAnchor::Left | EAnchor::Right);
+	m_filterAnchor.Init(*this, wndFilter, EAnchor::Bottom | EAnchor::Left | EAnchor::Right);
+	m_projectsAnchor.Init(*this, GetDlgItem(IDC_PROJECTS), EAnchor::Top | EAnchor::Left | EAnchor::Right);
+	m_viewCodeAnchor.Init(*this, GetDlgItem(IDC_VIEWCODE), EAnchor::Bottom | EAnchor::Left);
+	m_exploreAnchor.Init(*this, GetDlgItem(IDC_EXPLORE), EAnchor::Bottom | EAnchor::Right);
+	m_openAnchor.Init(*this, GetDlgItem(IDOK), EAnchor::Bottom | EAnchor::Right);
+	m_cancelAnchor.Init(*this, GetDlgItem(IDCANCEL), EAnchor::Bottom | EAnchor::Right);
 
 	RefreshProjectList();
 
@@ -179,11 +177,8 @@ LRESULT CGoToFileDlg::OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BO
 	const LONG iWidth = static_cast<LONG>(LOWORD(lParam));
 	const LONG iHeight = static_cast<LONG>(HIWORD(lParam));
 
-	const LONG iInitialWidth = GetInitialWidth();
-	const LONG iInitialHeight = GetInitialHeight();
-
-	const LONG iDeltaX = iWidth - iInitialWidth;
-	const LONG iDeltaY = iHeight - iInitialHeight;
+	const LONG iDeltaX = iWidth - m_iInitialWidth;
+	const LONG iDeltaY = iHeight - m_iInitialHeight;
 
 	m_filesAnchor.Update(iDeltaX, iDeltaY);
 	m_filterAnchor.Update(iDeltaX, iDeltaY);

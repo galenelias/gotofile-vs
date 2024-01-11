@@ -20,6 +20,7 @@
 #pragma once
 
 #include "stdafx.h"
+#include "WindowAnchor.h"
 #include "..\GoToFileUI\Resource.h"
 #include <optional>
 
@@ -35,6 +36,7 @@ public:
 
 	BEGIN_MSG_MAP(CGoToFileDlg)
 		MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
+		MESSAGE_HANDLER(WM_SIZE, OnSize)
 		COMMAND_HANDLER(IDOK, BN_CLICKED, OnClickedOk)
 		COMMAND_HANDLER(IDCANCEL, BN_CLICKED, OnClickedCancel)
 		COMMAND_HANDLER(IDC_BTN_SELECT_ALL_NONE, BN_CLICKED, OnClickedSelectAllOrNone)
@@ -43,14 +45,25 @@ public:
 	END_MSG_MAP()
 
 	LRESULT OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
+	LRESULT OnSize(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 	LRESULT OnClickedOk(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT OnClickedCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT OnClickedSelectAllOrNone(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT OnLvnItemchanged(int idCtrl, NMHDR* pNMHDR, BOOL& bHandled);
 
+	void StoreDialogSize();
+	void RestoreDialogSize();
+
 private:
 	const std::vector<std::unique_ptr<WCHAR[]>>& m_allProjectNames;
 
 	std::vector<bool> m_selectedProjects;
+	LONG m_iInitialWidth;
+	LONG m_iInitialHeight;
+	SAnchor m_projectsAnchor;
+	SAnchor m_okAnchor;
+	SAnchor m_cancelAnchor;
+
+
 
 };
