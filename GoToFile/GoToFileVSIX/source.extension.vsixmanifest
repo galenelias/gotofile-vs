@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PackageManifest Version="2.0.0" xmlns="http://schemas.microsoft.com/developer/vsx-schema/2011" xmlns:d="http://schemas.microsoft.com/developer/vsx-schema-design/2011">
     <Metadata>
-        <Identity Id="C6662CC8-8593-4B09-A322-1D510A34FF80" Version="1.4" Language="en-US" Publisher="Galen Elias" />
-        <DisplayName>FastGoToFile 2022</DisplayName>
+        <Identity Id="1e71bec8-aa0c-4a7b-9379-41626a29c69e" Version="1.4" Language="en-US" Publisher="Galen Elias" />
+        <DisplayName>FastGoToFile</DisplayName>
         <Description xml:space="preserve">Extension to enable quickly jumping to a file in the solution</Description>
         <MoreInfo>https://github.com/galenelias/gotofile-vs</MoreInfo>
         <Icon>GoToFileIcon.png</Icon>
@@ -10,9 +10,7 @@
         <Tags>Fast Open File In Solution GoTo Find</Tags>
     </Metadata>
     <Installation>
-        <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[17.0, 18.0)">
-            <ProductArchitecture>amd64</ProductArchitecture>
-        </InstallationTarget>
+        <InstallationTarget Id="Microsoft.VisualStudio.Community" Version="[14.0, 17.0)" />
     </Installation>
     <Dependencies>
     </Dependencies>
@@ -23,3 +21,4 @@
         <Prerequisite Id="Microsoft.VisualStudio.Component.CoreEditor" Version="[15.0,18.0)" DisplayName="Visual Studio core editor" />
     </Prerequisites>
 </PackageManifest>
+ 
