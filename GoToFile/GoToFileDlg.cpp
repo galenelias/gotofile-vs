@@ -392,6 +392,7 @@ HICON CGoToFileDlg::LoadIcon(int iID, int iWidth, int iHeight)
 
 static WCHAR s_lpProjectItemKindPhysicalFile[MAX_PATH + 1];
 static WCHAR s_lpProjectItemKindSolutionItemFile[MAX_PATH + 1];
+static WCHAR s_lpProjectKindSolutionItems[MAX_PATH + 1];
 static WCHAR s_isProjectKindsInitialized = false;
 
 void CGoToFileDlg::CreateFileList()
@@ -406,6 +407,9 @@ void CGoToFileDlg::CreateFileList()
 		
 		MultiByteToWideChar(CP_ACP, 0, VxDTE::vsProjectItemKindSolutionItems, -1, s_lpProjectItemKindSolutionItemFile, MAX_PATH + 1);
 		s_lpProjectItemKindSolutionItemFile[MAX_PATH] = '\0';
+
+		MultiByteToWideChar(CP_ACP, 0, VxDTE::vsProjectKindSolutionItems, -1, s_lpProjectKindSolutionItems, MAX_PATH + 1);
+		s_lpProjectKindSolutionItems[MAX_PATH] = '\0';
 
 		s_isProjectKindsInitialized = true;
 	}
@@ -487,6 +491,7 @@ void CGoToFileDlg::CreateFileList(SName<std::vector<std::unique_ptr<WCHAR[]>>>& 
 							CComPtr<VxDTE::Project> spProject;
 							if (SUCCEEDED(spProjectItem->get_SubProject(&spProject)) && spProject)
 							{
+
 								CComBSTR spProjectName;
 								if (SUCCEEDED(spProject->get_Name(&spProjectName)) && spProjectName)
 								{
@@ -494,7 +499,22 @@ void CGoToFileDlg::CreateFileList(SName<std::vector<std::unique_ptr<WCHAR[]>>>& 
 									if (SUCCEEDED(spProject->get_ProjectItems(&spProjectItems)) && spProjectItems)
 									{
 										SName<std::vector<std::unique_ptr<WCHAR[]>>> projectPath(parentProjectPath, spProjectName);
-										CreateFileList(projectName, projectPath, spProjectItems);
+
+										CComBSTR spSubProjectKind;
+										spProject->get_Kind(&spSubProjectKind);
+
+										// For sub-folders of solution items, just group then under the parent 'project name' rather than the sub-folder name
+										// Not sure if this is what people expect, but seems excessive to project for each sub-folder
+										// However, for actual sub-projects which reside under solution item folders, pull those into a new top level project name
+										if (spSubProjectKind && _wcsicmp(spSubProjectKind, s_lpProjectKindSolutionItems) == 0)
+										{
+											CreateFileList(projectName, projectPath, spProjectItems);
+										}
+										else
+										{
+											SName<std::vector<std::unique_ptr<WCHAR[]>>> subProjectName(m_projectNames, spProjectName);
+											CreateFileList(subProjectName, projectPath, spProjectItems);
+										}
 									}
 								}
 							}
