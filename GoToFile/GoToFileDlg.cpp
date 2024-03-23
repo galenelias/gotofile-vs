@@ -22,6 +22,7 @@
 #include "GoToFileDlg.h"
 #include "SelectProjectsDlg.h"
 #include "Stopwatch.h"
+#include "shellapi.h"
 #include <string_view>
 #include <iterator>
 #include <optional>
@@ -59,6 +60,9 @@ CGoToFileDlg::~CGoToFileDlg()
 
 	m_logfile.close();
 }
+
+
+
 
 LRESULT CGoToFileDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled)
 {
@@ -124,6 +128,7 @@ LRESULT CGoToFileDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	m_exploreAnchor.Init(*this, GetDlgItem(IDC_EXPLORE), EAnchor::Bottom | EAnchor::Right);
 	m_openAnchor.Init(*this, GetDlgItem(IDOK), EAnchor::Bottom | EAnchor::Right);
 	m_cancelAnchor.Init(*this, GetDlgItem(IDCANCEL), EAnchor::Bottom | EAnchor::Right);
+	m_usageAnchor.Init(*this, GetDlgItem(IDC_USAGE_LINK), EAnchor::Bottom | EAnchor::Right);
 
 	RefreshProjectList();
 
@@ -145,6 +150,8 @@ LRESULT CGoToFileDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	}
 
 	RefreshFileList();
+
+	SetupUsageControl();
 
 	m_bInitializing = false;
 
@@ -169,6 +176,8 @@ LRESULT CGoToFileDlg::OnDestroy(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& b
 	m_settings.Store();
 	m_settings.Write();
 
+	DeleteObject(m_tooltipFont);
+
 	return CAxDialogImpl<CGoToFileDlg>::OnDestroy(uMsg, wParam, lParam, bHandled);
 }
 
@@ -187,6 +196,7 @@ LRESULT CGoToFileDlg::OnSize(UINT /*uMsg*/, WPARAM /*wParam*/, LPARAM lParam, BO
 	m_exploreAnchor.Update(iDeltaX, iDeltaY);
 	m_openAnchor.Update(iDeltaX, iDeltaY);
 	m_cancelAnchor.Update(iDeltaX, iDeltaY);
+	m_usageAnchor.Update(iDeltaX, iDeltaY);
 	Invalidate();
 
 	bHandled = TRUE;
@@ -1510,6 +1520,75 @@ void CGoToFileDlg::UnregisterWndProc(CGoToFileDlg* pGoToFileDlg)
 			break;
 		}
 	}
+}
+
+void CGoToFileDlg::SetupUsageControl()
+{
+	// We need a monospace font so that our usage text lines up accurately.
+	LOGFONT logFont;
+	memset(&logFont, 0, sizeof(LOGFONT));
+	logFont.lfHeight = -12;
+	logFont.lfWeight = FW_NORMAL;
+	wcscpy_s(logFont.lfFaceName, _countof(logFont.lfFaceName), L"Consolas");
+	m_tooltipFont = CreateFontIndirect(&logFont);
+
+	HWND hwndUsageLink = GetDlgItem(IDC_USAGE_LINK);
+
+	// Set the usage hyperlink in code, as having it in the resource is a bit unwieldy.
+	PTSTR pwzUsageText = L"<A HREF=\"https://github.com/galenelias/gotofile-vs?tab=readme-ov-file#special-characters\">?</A>";
+	SendMessage(hwndUsageLink, WM_SETTEXT, 0, (LPARAM)pwzUsageText);
+
+	// Create the tooltip.
+	HWND hwndTip = CreateWindowEx(NULL, TOOLTIPS_CLASS, NULL,
+		WS_POPUP | TTS_ALWAYSTIP | TTS_BALLOON,
+		CW_USEDEFAULT, CW_USEDEFAULT,
+		CW_USEDEFAULT, CW_USEDEFAULT,
+		m_hWnd, NULL,
+		_AtlBaseModule.GetResourceInstance(), NULL);
+
+	if (!hwndTip)
+		return;
+
+	// Copy the special character usage text from https://github.com/galenelias/gotofile-vs?tab=readme-ov-file#special-characters
+	// for convenience.
+	PTSTR pwzUsageTooltip =
+		L"Example                     Description\n"
+		L"------------------------------------------------------------\n"
+		L"substring.cpp(row[,col])  - Opens the selected file navigating to row/col. Useful for opening based on build break output\n"
+		L"substring .h              - Find all files containing substring in all .h files.\n"
+		L"substring |.cpp |.h       - Find all files containing substring in all .cpp and .h files.\n"
+		L"substring -.h             - Find all files containing substring in all files except .h files.\n"
+		L"substring -.cpp -.h       - Find all files containing substring in all files except .cpp and .h files.\n"
+		L"substring \\\\include\\      - Find all files containing substring in any folder called include.\n"
+		L"substring :\"header files\" - Find all files containing substring in any filter containing header files.\n"
+		L":substring                - Find all files in any project containing substring.\n"
+		L"substring *.h             - Find all files containing substring in all files ending in .h.\n"
+		;
+
+	// Associate the tooltip with the tool.
+	TOOLINFO toolInfo = { 0 };
+	toolInfo.cbSize = sizeof(toolInfo);
+	toolInfo.hwnd = m_hWnd;
+	toolInfo.uFlags = TTF_IDISHWND | TTF_SUBCLASS;
+	toolInfo.uId = (UINT_PTR)hwndUsageLink;
+	toolInfo.lpszText = pwzUsageTooltip;
+	SendMessage(hwndTip, TTM_ADDTOOL, 0, (LPARAM)&toolInfo);
+	SendMessage(hwndTip, TTM_SETMAXTIPWIDTH, 0, 32676); // Uncap the text so our super long text can fit and go multi-line
+	SendMessage(hwndTip, WM_SETFONT, (WPARAM)m_tooltipFont, TRUE);
+}
+
+LRESULT CGoToFileDlg::OnClickUsage(int /*idCtrl*/, LPNMHDR pNHM, BOOL& bHandled)
+{
+	PNMLINK pNMLink = (PNMLINK)pNHM;
+	LITEM   item = pNMLink->item;
+
+	if (item.iLink == 0)
+	{
+		ShellExecute(NULL, L"open", item.szUrl, NULL, NULL, SW_SHOW);
+	}
+
+	bHandled = TRUE;
+	return 0;
 }
 
 void CGoToFileDlg::InitializeLogFile()
