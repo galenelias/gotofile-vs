@@ -53,6 +53,8 @@ public:
 		NOTIFY_HANDLER(IDC_FILES, LVN_COLUMNCLICK, OnColumnClickFiles)
 		NOTIFY_HANDLER(IDC_FILES, NM_DBLCLK, OnDoubleClickFiles)
 		NOTIFY_HANDLER(IDC_PROJECTS, CBEN_GETDISPINFO, OnGetDispInfoProjects)
+		NOTIFY_HANDLER(IDC_USAGE_LINK, NM_CLICK, OnClickUsage)
+
 		COMMAND_HANDLER(IDC_PROJECTS, CBN_SELCHANGE, OnSelChangedProjects)
 		CHAIN_MSG_MAP(CAxDialogImpl<CGoToFileDlg>)
 	END_MSG_MAP()
@@ -72,6 +74,7 @@ public:
 	LRESULT OnDoubleClickFiles(int idCtrl, LPNMHDR pNHM, BOOL& bHandled);
 	LRESULT OnGetDispInfoProjects(int idCtrl, LPNMHDR pNHM, BOOL& bHandled);
 	LRESULT OnSelChangedProjects(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
+	LRESULT OnClickUsage(int idCtrl, LPNMHDR pNHM, BOOL& bHandled);
 
 	LONG GetInitialWidth() const { return m_iInitialWidth; }
 	LONG GetInitialHeight() const { return m_iInitialHeight; }
@@ -89,6 +92,9 @@ private:
 	SAnchor m_exploreAnchor;
 	SAnchor m_openAnchor;
 	SAnchor m_cancelAnchor;
+	SAnchor m_usageAnchor;
+
+	HFONT m_tooltipFont = NULL;
 
 	CComPtr<VxDTE::_DTE> m_spDTE;
 
@@ -167,6 +173,8 @@ private:
 	void CreateBrowseFileList();
 	void CreateBrowseFileList(LPCWSTR lpPath);
 	void DestroyBrowseFileList();
+
+	void SetupUsageControl();
 
 	unsigned int GetSelectedProject();
 
