@@ -82,6 +82,7 @@ public:
 private:
 	bool m_bInitializing;
 	GoToFileSettings m_settings;
+	LONGLONG m_createFileListTime = 0;
 
 	LONG m_iInitialWidth = 0;
 	LONG m_iInitialHeight = 0;

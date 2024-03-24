@@ -139,6 +139,9 @@ LRESULT CGoToFileDlg::OnInitDialog(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL
 	if (m_settings.IsLoggingEnabled())
 		InitializeLogFile();
 
+	// Log out previously recorded initial CreateFileList time
+	LogToFile(L"CreateFileList (%zu): Ran in %llu microseconds", m_files.size(), m_createFileListTime);
+
 	if (GetSelectedProject() == static_cast<unsigned int>(KNOWN_FILTER_BROWSE))
 	{
 		Stopwatch stopwatch;
@@ -407,6 +410,8 @@ static WCHAR s_isProjectKindsInitialized = false;
 
 void CGoToFileDlg::CreateFileList()
 {
+	Stopwatch stopwatch;
+
 	DestroyFileList();
 
 	// Get a wide string version of the specific project kinds we care about, but only do the conversion once
@@ -446,6 +451,9 @@ void CGoToFileDlg::CreateFileList()
 			}
 		}
 	}
+
+	// We can't log here, as our settings haven't been loaded yet, so just record this and then potentially log it later
+	m_createFileListTime = stopwatch.GetElapsedMicroseconds();
 }
 
 void CGoToFileDlg::CreateFileList(SName<std::vector<std::unique_ptr<WCHAR[]>>>& parentProjectPath, VxDTE::Project* pProject)
@@ -1554,7 +1562,8 @@ void CGoToFileDlg::SetupUsageControl()
 	PTSTR pwzUsageTooltip =
 		L"Example                     Description\n"
 		L"------------------------------------------------------------\n"
-		L"substring.cpp(row[,col])  - Opens the selected file navigating to row/col. Useful for opening based on build break output\n"
+		L"substring.cpp(row[,col])  - Opens the selected file navigating to row/col.\n"
+		L"substring.cpp:row[:col]   - Opens the selected file navigating to row/col.\n"
 		L"substring .h              - Find all files containing substring in all .h files.\n"
 		L"substring |.cpp |.h       - Find all files containing substring in all .cpp and .h files.\n"
 		L"substring -.h             - Find all files containing substring in all files except .h files.\n"
@@ -1620,6 +1629,9 @@ void CGoToFileDlg::InitializeLogFile()
 
 void CGoToFileDlg::LogToFile(LPCWSTR pwzFormat, ...)
 {
+	if (!m_settings.IsLoggingEnabled())
+		return;
+
 	SYSTEMTIME systemTime;
 	GetLocalTime(&systemTime);
 
