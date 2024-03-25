@@ -86,7 +86,7 @@ public:
 		, m_eLogicOperator(eLogicOperator)
 		, m_bWildcard(false)
 	{
-		while(*lpFilter)
+		while (*lpFilter)
 		{
 			*lpFilter = Normalize(*lpFilter, eSearchField);
 			if (*lpFilter == L'*' || *lpFilter == L'?')
@@ -113,3 +113,7 @@ public:
 private:
 	bool m_bWildcard;
 };
+
+
+void CreateFilterList(const CComBSTR& spFilter, std::unique_ptr<WCHAR[]>& spFilterStringTable, std::vector<SFilter>& Filters, _Inout_ int* destinationLine, _Inout_ int* destinationColumn);
+

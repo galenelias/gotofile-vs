@@ -496,7 +496,7 @@ void CGoToFileDlg::CreateFileList(SName<std::vector<std::unique_ptr<WCHAR[]>>>& 
 						CComBSTR spFilePath = nullptr;
 						if (SUCCEEDED(spProjectItem->get_FileNames(1, &spFilePath)) && spFilePath)
 						{
-							const size_t cchFilePath = wcslen(spFilePath) + 1;
+							const size_t cchFilePath = spFilePath.Length() + 1;
 							std::unique_ptr<WCHAR[]> spFilePathCopy = std::make_unique<WCHAR[]>(cchFilePath);
 							wcscpy_s(spFilePathCopy.get(), cchFilePath, spFilePath);
 							m_files.emplace_back(std::move(spFilePathCopy), projectName.GetName(), parentProjectPath.GetName());
@@ -710,6 +710,7 @@ static bool CompareProjects(const std::unique_ptr<WCHAR[]>& spProject1, const st
 	return _wcsicmp(spProject1.get(), spProject2.get()) < 0;
 }
 
+
 void CGoToFileDlg::RefreshProjectList()
 {
 	if (m_projectNames.size() > 1)
@@ -768,6 +769,7 @@ void CGoToFileDlg::RefreshProjectList()
 	::SendMessage(hProjects, CB_SETCURSEL, 0, 0);
 }
 
+
 bool CGoToFileDlg::CompareFiles(const SFilteredFile& file1, const SFilteredFile& file2)
 {
 	int iResult = 0;
@@ -799,6 +801,7 @@ bool CGoToFileDlg::CompareFiles(const SFilteredFile& file1, const SFilteredFile&
 	return iResult < 0;
 }
 
+
 void CGoToFileDlg::SortFileList()
 {
 	if (m_filteredFiles.size() > 1)
@@ -806,6 +809,7 @@ void CGoToFileDlg::SortFileList()
 		std::sort(m_filteredFiles.begin(), m_filteredFiles.end(), &CGoToFileDlg::CompareFiles);
 	}
 }
+
 
 void CGoToFileDlg::RefreshFileList()
 {
@@ -831,7 +835,11 @@ void CGoToFileDlg::RefreshFileList()
 	std::unique_ptr<WCHAR[]> spFilterStringTable;
 	std::vector<SFilter> filters;
 
-	CreateFilterList(spFilterStringTable, filters, &m_fileLineDestination, &m_fileColumnDestination);
+	CComBSTR spFilter;
+	GetDlgItem(IDC_FILTER).GetWindowText(&spFilter);
+
+	if (spFilter)
+		CreateFilterList(spFilter, spFilterStringTable, filters, &m_fileLineDestination, &m_fileColumnDestination);
 
 	m_filteredFiles.clear();
 	m_filteredFiles.reserve(filesToFilter.size());
@@ -928,6 +936,7 @@ void CGoToFileDlg::RefreshFileList()
 	LogToFile(L"RefreshFileList (%zu of %zu): Ran in %llu microseconds", m_filteredFiles.size(), m_files.size(), stopwatch.GetElapsedMicroseconds());
 }
 
+
 void CGoToFileDlg::ExploreSelectedFiles()
 {
 	HWND hFiles = GetDlgItem(IDC_FILES);
@@ -1007,6 +1016,7 @@ void CGoToFileDlg::ExploreSelectedFiles()
 	}
 }
 
+
 void CGoToFileDlg::Select(int iItem)
 {
 	CWindow wndFiles = GetDlgItem(IDC_FILES);
@@ -1037,6 +1047,7 @@ void CGoToFileDlg::Select(int iItem)
 		ListView_Scroll(hFiles, 0, 0);
 	}
 }
+
 
 bool CGoToFileDlg::OpenSelectedFiles()
 {
@@ -1111,228 +1122,6 @@ bool CGoToFileDlg::OpenSelectedFiles()
 	return bResult;
 }
 
-// Attempt to parse line number offsets, e.g.  "Foo.cpp(32,10)"
-std::tuple<std::wstring_view::size_type, std::optional<int>, std::optional<int>> ParseParenLineAndColumn(std::wstring_view svFilePath)
-{
-	std::optional<int> destinationLine;
-	std::optional<int> destinationColumn;
-	auto posParen = svFilePath.find(L'(');
-
-	if (posParen != svFilePath.npos)
-	{
-		auto posInvalidChar = svFilePath.find_first_not_of(L"0123456789,)", posParen + 1); // Only parse the remainder as a line/column indicator if there are no unexpected characters
-
-		if (posInvalidChar == svFilePath.npos)
-		{
-			int lineResult = _wtoi(svFilePath.data() + posParen + 1);
-			if (lineResult != 0)
-				destinationLine = lineResult;
-
-			auto posComma = svFilePath.find(L',', posParen + 1);
-			if (posComma != svFilePath.npos)
-			{
-				int colResult = _wtoi(svFilePath.data() + posComma + 1);
-				if (colResult != 0)
-					destinationColumn = colResult;
-			}
-		}
-	}
-
-	return { posParen, destinationLine, destinationColumn };
-}
-
-std::tuple<std::wstring_view::size_type, std::optional<int>, std::optional<int>> ParseColonLineAndColumn(std::wstring_view svFilePath)
-{
-	std::optional<int> destinationLine;
-	std::optional<int> destinationColumn;
-
-	auto posColon = svFilePath.find(L':');
-	if (posColon != svFilePath.npos)
-	{
-		auto posInvalidChar = svFilePath.find_first_not_of(L"0123456789:", posColon + 1);  // Only parse the remainder as a line/column indicator if there are no unexpected characters
-
-		if (posInvalidChar == svFilePath.npos)
-		{
-			int lineResult = _wtoi(svFilePath.data() + posColon + 1);
-			if (lineResult != 0)
-				destinationLine = lineResult;
-
-			auto posSecondColon = svFilePath.find(L':', posColon + 1);
-			if (posSecondColon != svFilePath.npos)
-			{
-				int colResult = _wtoi(svFilePath.data() + posSecondColon + 1);
-				if (colResult != 0)
-					destinationColumn = colResult;
-			}
-		}
-	}
-
-	return { posColon, destinationLine, destinationColumn };
-}
-
-void TryParseLineAndColumns(LPWSTR lpStart, LPCWSTR lpEnd, _Out_ int* pDestinationLine, _Out_ int* pDestinationColumn)
-{
-	// Check for line/column indicators in the file path
-	std::wstring_view svFilePath(lpStart, lpEnd - lpStart);
-
-	size_t posParen;
-	std::optional<int> destinationLine, destinationColumn;
-
-	std::tie(posParen, destinationLine, destinationColumn) = ParseParenLineAndColumn(svFilePath);
-	if (posParen != svFilePath.npos)
-	{
-		lpStart[posParen] = '\0';
-	}
-	else
-	{
-		size_t posColon;
-		std::tie(posColon, destinationLine, destinationColumn) = ParseColonLineAndColumn(svFilePath);
-		if (posColon != svFilePath.npos)
-			lpStart[posColon] = '\0';
-	}
-
-	if (destinationLine.has_value())
-		*pDestinationLine = *destinationLine;
-
-	if (destinationColumn.has_value())
-		*pDestinationColumn = *destinationColumn;
-}
-
-
-void CGoToFileDlg::CreateFilterList(std::unique_ptr<WCHAR[]>& spFilterStringTable, std::vector<SFilter>& filters, _Inout_ int* pDestinationLine, _Inout_ int* pDestinationColumn)
-{
-	CComBSTR spFilter;
-	GetDlgItem(IDC_FILTER).GetWindowText(&spFilter);
-	if (spFilter)
-	{
-		const size_t cchFilter = wcslen(spFilter) + 1;
-		spFilterStringTable = std::make_unique<WCHAR[]>(cchFilter);
-		wcscpy_s(spFilterStringTable.get(), cchFilter, spFilter);
-
-		LPWSTR lpFilter = nullptr;
-		ESearchField eSearchField = SEARCH_FIELD_FILE_NAME;
-		ELogicOperator eLogicOperator = LOGIC_OPERATOR_NONE;
-		bool bNot = false;
-		bool bQuoted = false;
-
-		bool bParse = true;
-		for (LPWSTR pChar = spFilterStringTable.get(); bParse; pChar++)
-		{
-			bool bDone = false;
-			switch(*pChar)
-			{
-			case L'\0':
-				bParse = false;
-				bDone = true;
-				break;
-			case L'&':
-				if (lpFilter == nullptr && eLogicOperator == LOGIC_OPERATOR_NONE && !bQuoted)
-				{
-					eLogicOperator = LOGIC_OPERATOR_AND;
-					continue;
-				}
-				break;
-			case L'|':
-				if (lpFilter == nullptr && eLogicOperator == LOGIC_OPERATOR_NONE && !bQuoted)
-				{
-					eLogicOperator = LOGIC_OPERATOR_OR;
-					continue;
-				}
-				break;
-			case L'-':
-			case L'!':
-				if (lpFilter == nullptr && !bNot && !bQuoted)
-				{
-					bNot = true;
-					continue;
-				}
-				break;
-			case L'"':
-				if (lpFilter == nullptr && !bQuoted)
-				{
-					bQuoted = true;
-					continue;
-				}
-				else if (bQuoted)
-				{
-					bDone = true;
-				}
-				break;
-			case L'\\':
-			case L'/':
-				if (lpFilter == nullptr && !bQuoted)
-				{
-					if (eSearchField == SEARCH_FIELD_FILE_NAME)
-					{
-						eSearchField = SEARCH_FIELD_FILE_PATH;
-					}
-					else if (eSearchField == SEARCH_FIELD_PROJECT_NAME)
-					{
-						eSearchField = SEARCH_FIELD_PROJECT_PATH;
-					}
-					continue;
-				}
-				break;
-			case L':':
-				if (lpFilter == nullptr && !bQuoted)
-				{
-					if (eSearchField == SEARCH_FIELD_FILE_NAME)
-					{
-						eSearchField = SEARCH_FIELD_PROJECT_NAME;
-					}
-					else if (eSearchField == SEARCH_FIELD_FILE_PATH)
-					{
-						eSearchField = SEARCH_FIELD_PROJECT_PATH;
-					}
-					continue;
-				}
-				break;
-			case L' ':
-			case L'\t':
-			case L'\r':
-			case L'\n':
-				if (!bQuoted)
-				{
-					bDone = true;
-				}
-				break;
-			}
-
-			if (bDone)
-			{
-				if (lpFilter != nullptr && *lpFilter != L'\0')
-				{
-					if (eLogicOperator == LOGIC_OPERATOR_NONE)
-					{
-						eLogicOperator = LOGIC_OPERATOR_AND;
-					}
-					if (bNot)
-					{
-						eLogicOperator = static_cast<ELogicOperator>(eLogicOperator << 1);
-					}
-
-					*pChar = L'\0';
-
-					TryParseLineAndColumns(lpFilter, pChar, pDestinationLine, pDestinationColumn);
-
-					filters.emplace_back(lpFilter, eSearchField, eLogicOperator);
-				}
-
-				lpFilter = nullptr;
-				eSearchField = SEARCH_FIELD_FILE_NAME;
-				eLogicOperator = LOGIC_OPERATOR_NONE;
-				bNot = false;
-				bQuoted = false;
-			}
-			else if (lpFilter == nullptr)
-			{
-				lpFilter = pChar;
-			}
-		}
-	}
-}
-
-
 
 LRESULT CALLBACK CGoToFileDlg::FilterProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -1370,10 +1159,12 @@ CGoToFileDlg::SWndProc* CGoToFileDlg::GetWndProc(HWND hWnd)
 	return nullptr;
 }
 
+
 void CGoToFileDlg::RegisterWndProc(CGoToFileDlg& goToFileDlg, HWND hWnd, WNDPROC pWndProc)
 {
 	CGoToFileDlg::s_wndProcs.emplace_back(goToFileDlg, hWnd, pWndProc);
 }
+
 
 void CGoToFileDlg::UnregisterWndProc(CGoToFileDlg* pGoToFileDlg)
 {
@@ -1387,6 +1178,7 @@ void CGoToFileDlg::UnregisterWndProc(CGoToFileDlg* pGoToFileDlg)
 		}
 	}
 }
+
 
 void CGoToFileDlg::SetupUsageControl()
 {
@@ -1444,6 +1236,7 @@ void CGoToFileDlg::SetupUsageControl()
 	SendMessage(hwndTip, WM_SETFONT, (WPARAM)m_tooltipFont, TRUE);
 }
 
+
 LRESULT CGoToFileDlg::OnClickUsage(int /*idCtrl*/, LPNMHDR pNHM, BOOL& bHandled)
 {
 	PNMLINK pNMLink = (PNMLINK)pNHM;
@@ -1457,6 +1250,7 @@ LRESULT CGoToFileDlg::OnClickUsage(int /*idCtrl*/, LPNMHDR pNHM, BOOL& bHandled)
 	bHandled = TRUE;
 	return 0;
 }
+
 
 void CGoToFileDlg::InitializeLogFile()
 {
@@ -1484,6 +1278,7 @@ void CGoToFileDlg::InitializeLogFile()
 
 	m_logfile.open(s_szLogFilePath, std::ofstream::out | std::ofstream::app);
 }
+
 
 void CGoToFileDlg::LogToFile(LPCWSTR pwzFormat, ...)
 {

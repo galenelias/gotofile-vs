@@ -223,9 +223,6 @@ public:
 	LPCWSTR GetKnownFilterName(EKnownFilter eKnownFilter) const;
 
 private:
-
-	void CreateFilterList(std::unique_ptr<WCHAR[]>& spFilterStringTable, std::vector<SFilter>& Filters, _Inout_ int* destinationLine, _Inout_ int* destinationColumn);
-
 	static LRESULT CALLBACK FilterProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam);
 
 	struct SFolderAndSelectedFiles
