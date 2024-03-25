@@ -24,8 +24,9 @@
 #include "dte.h"
 #include "GoToFileSettings.h"
 #include "WindowAnchor.h"
+#include "SearchFilter.h"
 #include "..\GoToFileUI\Resource.h"
-#include <fstream>  // std::ofstream
+#include <fstream>  // std::wofstream
 #include <optional>
 
 class CGoToFileDlg : public CAxDialogImpl<CGoToFileDlg>
@@ -190,39 +191,7 @@ private:
 	void Select(int iItem);
 	bool OpenSelectedFiles();
 
-	struct SFile
-	{
-		SFile(std::unique_ptr<WCHAR[]>&& spFilePathArg, LPCWSTR lpProjectName, LPCWSTR lpProjectPath)
-			: spFilePath(std::move(spFilePathArg)), uiFileName(0), lpProjectName(lpProjectName), lpProjectPath(lpProjectPath)
-		{
-			LPWSTR lpFileName = std::max<LPWSTR>(wcsrchr(spFilePath.get(), L'\\'), wcsrchr(spFilePath.get(), L'/'));
-			if (lpFileName)
-			{
-				uiFileName = static_cast<unsigned short>(lpFileName - spFilePath.get()) + 1;
-			}
-		}
 
-		SFile(std::unique_ptr<WCHAR[]>&& spFilePath, unsigned short uiFileName, LPCWSTR lpProjectName, LPCWSTR lpProjectPath)
-			: spFilePath(std::move(spFilePath)), uiFileName(uiFileName), lpProjectName(lpProjectName), lpProjectPath(lpProjectPath)
-		{
-		}
-
-		std::unique_ptr<WCHAR[]> spFilePath;
-		unsigned short uiFileName;
-		LPCWSTR lpProjectName;
-		LPCWSTR lpProjectPath;
-	};
-
-	struct SFilteredFile
-	{
-		SFilteredFile(const SFile* pFile, int iMatch)
-			: pFile(pFile), iMatch(iMatch)
-		{
-		}
-
-		const SFile* pFile;
-		int iMatch;
-	};
 
 	std::vector<std::unique_ptr<WCHAR[]>> m_projectNames;
 	std::vector<std::unique_ptr<WCHAR[]>> m_projectPaths;
@@ -254,85 +223,6 @@ public:
 	LPCWSTR GetKnownFilterName(EKnownFilter eKnownFilter) const;
 
 private:
-	enum ESearchField
-	{
-		SEARCH_FIELD_FILE_NAME		= 0,
-		SEARCH_FIELD_FILE_PATH		= 4,
-		SEARCH_FIELD_PROJECT_NAME	= 8,
-		SEARCH_FIELD_PROJECT_PATH	= 12
-	};
-
-	enum ELogicOperator
-	{
-		LOGIC_OPERATOR_NONE		= 0x00,
-		LOGIC_OPERATOR_AND		= 0x01,
-		LOGIC_OPERATOR_AND_NOT	= 0x02,
-		LOGIC_OPERATOR_OR		= 0x04,
-		LOGIC_OPERATOR_OR_NOT	= 0x08,
-		LOGIC_OPERATOR_NOT_MASK	= LOGIC_OPERATOR_AND_NOT | LOGIC_OPERATOR_OR_NOT
-	};
-
-	enum EFilterTerm
-	{
-		FILTER_TERM_NONE					= 0x00,
-		FILTER_TERM_FILE_NAME_AND			= LOGIC_OPERATOR_AND << SEARCH_FIELD_FILE_NAME,
-		FILTER_TERM_FILE_NAME_AND_NOT		= LOGIC_OPERATOR_AND_NOT << SEARCH_FIELD_FILE_NAME,
-		FILTER_TERM_FILE_NAME_OR			= LOGIC_OPERATOR_OR << SEARCH_FIELD_FILE_NAME,
-		FILTER_TERM_FILE_NAME_OR_NOT		= LOGIC_OPERATOR_OR_NOT << SEARCH_FIELD_FILE_NAME,
-		FILTER_TERM_FILE_PATH_AND			= LOGIC_OPERATOR_AND << SEARCH_FIELD_FILE_PATH,
-		FILTER_TERM_FILE_PATH_AND_NOT		= LOGIC_OPERATOR_AND_NOT << SEARCH_FIELD_FILE_PATH,
-		FILTER_TERM_FILE_PATH_OR			= LOGIC_OPERATOR_OR << SEARCH_FIELD_FILE_PATH,
-		FILTER_TERM_FILE_PATH_OR_NOT		= LOGIC_OPERATOR_OR_NOT << SEARCH_FIELD_FILE_PATH,
-		FILTER_TERM_PROJECT_NAME_AND		= LOGIC_OPERATOR_AND << SEARCH_FIELD_PROJECT_NAME,
-		FILTER_TERM_PROJECT_NAME_AND_NOT	= LOGIC_OPERATOR_AND_NOT << SEARCH_FIELD_PROJECT_NAME,
-		FILTER_TERM_PROJECT_NAME_OR			= LOGIC_OPERATOR_OR << SEARCH_FIELD_PROJECT_NAME,
-		FILTER_TERM_PROJECT_NAME_OR_NOT		= LOGIC_OPERATOR_OR_NOT << SEARCH_FIELD_PROJECT_NAME,
-		FILTER_TERM_PROJECT_PATH_AND		= LOGIC_OPERATOR_AND << SEARCH_FIELD_PROJECT_PATH,
-		FILTER_TERM_PROJECT_PATH_AND_NOT	= LOGIC_OPERATOR_AND_NOT << SEARCH_FIELD_PROJECT_PATH,
-		FILTER_TERM_PROJECT_PATH_OR			= LOGIC_OPERATOR_OR << SEARCH_FIELD_PROJECT_PATH,
-		FILTER_TERM_PROJECT_PATH_OR_NOT		= LOGIC_OPERATOR_OR_NOT << SEARCH_FIELD_PROJECT_PATH,
-		FILTER_TERM_AND_MASK				= FILTER_TERM_FILE_NAME_AND | FILTER_TERM_FILE_NAME_AND_NOT | FILTER_TERM_FILE_PATH_AND | FILTER_TERM_FILE_PATH_AND_NOT | FILTER_TERM_PROJECT_NAME_AND | FILTER_TERM_PROJECT_NAME_AND_NOT | FILTER_TERM_PROJECT_PATH_AND | FILTER_TERM_PROJECT_PATH_AND_NOT,
-		FILTER_TERM_OR_MASK					= FILTER_TERM_FILE_NAME_OR | FILTER_TERM_FILE_NAME_OR_NOT | FILTER_TERM_FILE_PATH_OR | FILTER_TERM_FILE_PATH_OR_NOT | FILTER_TERM_PROJECT_NAME_OR | FILTER_TERM_PROJECT_NAME_OR_NOT | FILTER_TERM_PROJECT_PATH_OR | FILTER_TERM_PROJECT_PATH_OR_NOT
-	};
-
-	struct SFilter
-	{
-	public:
-		SFilter(LPWSTR lpFilter, ESearchField eSearchField, ELogicOperator eLogicOperator)
-			: lpFilter(lpFilter), eSearchField(eSearchField), eLogicOperator(eLogicOperator), bWildcard(false)
-		{
-			while(*lpFilter)
-			{
-				*lpFilter = Normalize(*lpFilter, eSearchField);
-				if (*lpFilter == L'*' || *lpFilter == L'?')
-				{
-					bWildcard = true;
-				}
-				lpFilter++;
-			}
-		}
-
-		SFilter(const SFilter& Filter)
-			: lpFilter(Filter.lpFilter), eSearchField(Filter.eSearchField), eLogicOperator(Filter.eLogicOperator), bWildcard(Filter.bWildcard)
-		{
-		}
-
-		EFilterTerm GetFilterTerm() const
-		{
-			return static_cast<EFilterTerm>(eLogicOperator << eSearchField);
-		}
-
-		static WCHAR Normalize(WCHAR cChar, ESearchField eSearchField);
-		static int Like(LPCWSTR lpSearch, LPCWSTR lpFilter, ESearchField eSearchField);
-		int Match(const SFile& File) const;
-
-		LPWSTR lpFilter;
-		ESearchField eSearchField;
-		ELogicOperator eLogicOperator;
-
-	private:
-		bool bWildcard;
-	};
 
 	void CreateFilterList(std::unique_ptr<WCHAR[]>& spFilterStringTable, std::vector<SFilter>& Filters, _Inout_ int* destinationLine, _Inout_ int* destinationColumn);
 

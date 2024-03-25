@@ -303,6 +303,7 @@
     </ClCompile>
     <ClCompile Include="Module.cpp" />
     <ClCompile Include="Package.cpp" />
+    <ClCompile Include="SearchFilter.cpp" />
     <ClCompile Include="SelectProjectsDlg.cpp" />
     <ClCompile Include="StdAfx.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
@@ -322,6 +323,7 @@
     <ClInclude Include="Guids.h" />
     <ClInclude Include="Package.h" />
     <ClInclude Include="Resource.h" />
+    <ClInclude Include="SearchFilter.h" />
     <ClInclude Include="SelectProjectsDlg.h" />
     <ClInclude Include="StdAfx.h" />
     <ClInclude Include="Stopwatch.h" />
