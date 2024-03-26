@@ -316,6 +316,7 @@
     <None Include="GoToFile.def" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CharBag.h" />
     <ClInclude Include="CommonIncludes.h" />
     <ClInclude Include="GoToComplementary.h" />
     <ClInclude Include="GoToFileDlg.h" />

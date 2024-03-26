@@ -2,6 +2,8 @@
 
 #include "stdafx.h"
 
+#include "CharBag.h"
+
 enum ESearchField
 {
 	SEARCH_FIELD_FILE_NAME		= 0,
@@ -53,6 +55,8 @@ struct SFile
 		{
 			uiFileName = static_cast<unsigned short>(lpFileName - spFilePath.get()) + 1;
 		}
+
+		filePathCharBag.Initialize(spFilePath.get() + uiFileName);
 	}
 
 	SFile(std::unique_ptr<WCHAR[]>&& spFilePath, unsigned short uiFileName, LPCWSTR lpProjectName, LPCWSTR lpProjectPath)
@@ -60,10 +64,11 @@ struct SFile
 	{
 	}
 
-	std::unique_ptr<WCHAR[]> spFilePath;
-	unsigned short uiFileName;
 	LPCWSTR lpProjectName;
 	LPCWSTR lpProjectPath;
+	std::unique_ptr<WCHAR[]> spFilePath;
+	CharBag filePathCharBag;
+	unsigned short uiFileName;
 };
 
 struct SFilteredFile
@@ -84,6 +89,7 @@ public:
 		: m_lpFilter(lpFilter)
 		, m_eSearchField(eSearchField)
 		, m_eLogicOperator(eLogicOperator)
+		, m_charbag(lpFilter)
 		, m_bWildcard(false)
 	{
 		while (*lpFilter)
@@ -109,8 +115,9 @@ public:
 	LPWSTR m_lpFilter;
 	ESearchField m_eSearchField;
 	ELogicOperator m_eLogicOperator;
-
+	
 private:
+	CharBag m_charbag;
 	bool m_bWildcard;
 };
 

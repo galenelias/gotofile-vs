@@ -119,21 +119,25 @@ int SFilter::Match(const SFile& file) const
 	}
 	else if (iFilterLength <= iFileLength)
 	{
-		for (size_t i = 0; i <= iFileLength - iFilterLength; i++)
+		// Do a first-pass filter based on whether the field we're searching for even contains all the characters in the filter
+		if (m_eSearchField != SEARCH_FIELD_FILE_NAME || file.filePathCharBag.IsSuperset(m_charbag))
 		{
-			bool bSubMatch = true;
-			for (size_t j = 0; j < iFilterLength; j++)
+			for (size_t i = 0; i <= iFileLength - iFilterLength; i++)
 			{
-				if (Normalize(lpSearch[i + j], m_eSearchField) != m_lpFilter[j])
+				bool bSubMatch = true;
+				for (size_t j = 0; j < iFilterLength; j++)
 				{
-					bSubMatch = false;
+					if (Normalize(lpSearch[i + j], m_eSearchField) != m_lpFilter[j])
+					{
+						bSubMatch = false;
+						break;
+					}
+				}
+				if (bSubMatch)
+				{
+					iMatch = static_cast<int>(i);
 					break;
 				}
-			}
-			if (bSubMatch)
-			{
-				iMatch = static_cast<int>(i);
-				break;
 			}
 		}
 	}

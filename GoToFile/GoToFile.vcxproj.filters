@@ -80,6 +80,9 @@
     <ClInclude Include="SearchFilter.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="CharBag.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Midl Include="GoToFile.idl">
