@@ -458,7 +458,7 @@ void CGoToFileDlg::CreateFileList()
 
 void CGoToFileDlg::CreateFileList(SName<std::vector<std::unique_ptr<WCHAR[]>>>& parentProjectPath, VxDTE::Project* pProject)
 {
-	CComBSTR spProjectName = nullptr;
+	CComBSTR spProjectName;
 
 	if (SUCCEEDED(pProject->get_Name(&spProjectName)) && spProjectName)
 	{
@@ -483,7 +483,7 @@ void CGoToFileDlg::CreateFileList(SName<std::vector<std::unique_ptr<WCHAR[]>>>& 
 			CComPtr<VxDTE::ProjectItem> spProjectItem;
 			if (SUCCEEDED(pParentProjectItems->Item(CComVariant(i), &spProjectItem)) && spProjectItem)
 			{
-				CComBSTR spKind = nullptr;
+				CComBSTR spKind;
 				if (SUCCEEDED(spProjectItem->get_Kind(&spKind)) && spKind)
 				{
 					// Solution Level Items show up as different kind than physical files, despite being physical files
@@ -493,7 +493,7 @@ void CGoToFileDlg::CreateFileList(SName<std::vector<std::unique_ptr<WCHAR[]>>>& 
 						short fileCount = 0;
 						[[maybe_unused]] HRESULT hr = spProjectItem->get_FileCount(&fileCount);
 
-						CComBSTR spFilePath = nullptr;
+						CComBSTR spFilePath;
 						if (SUCCEEDED(spProjectItem->get_FileNames(1, &spFilePath)) && spFilePath)
 						{
 							const size_t cchFilePath = spFilePath.Length() + 1;
@@ -543,7 +543,7 @@ void CGoToFileDlg::CreateFileList(SName<std::vector<std::unique_ptr<WCHAR[]>>>& 
 						CComPtr<VxDTE::ProjectItems> spProjectItems;
 						if (SUCCEEDED(spProjectItem->get_ProjectItems(&spProjectItems)) && spProjectItems)
 						{
-							CComBSTR spFolderName = nullptr;
+							CComBSTR spFolderName;
 							if (SUCCEEDED(spProjectItem->get_Name(&spFolderName)) && spFolderName)
 							{
 								SName<std::vector<std::unique_ptr<WCHAR[]>>> projectPath(parentProjectPath, spFolderName);
@@ -637,6 +637,7 @@ void CGoToFileDlg::CreateBrowseFileList(LPCWSTR lpPath)
 				}
 			}
 		} while (FindNextFile(hFindFile, &findData));
+
 		FindClose(hFindFile);
 	}
 }
@@ -648,12 +649,13 @@ void CGoToFileDlg::DestroyBrowseFileList()
 
 LPCWSTR CGoToFileDlg::GetKnownFilterName(EKnownFilter eKnownFilter) const
 {
-	static LPCWSTR lpKnownFilterNames[] =
+	static constexpr LPCWSTR lpKnownFilterNames[] =
 	{
 		L"<All Projects>",
 		L"<Browse...>",
 		L"<Select Projects...>",
 	};
+
 	if (eKnownFilter >= 0 && eKnownFilter < KNOWN_FILTER_COUNT)
 	{
 		return lpKnownFilterNames[eKnownFilter];

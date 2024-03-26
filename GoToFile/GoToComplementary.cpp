@@ -171,6 +171,7 @@ bool CGoToComplementary::AddFileName(VxDTE::Document* pDocument, VxDTE::ProjectI
 						}
 					}
 				}
+
 				if ((eFlags & FRF_CodeFile) != FRF_None)
 				{
 					CComPtr<VxDTE::FileCodeModel> spFileCodeModel;
@@ -232,6 +233,7 @@ void CGoToComplementary::GetProjectItemChildren(VxDTE::Document* pDocument, std:
 				}
 			}
 		}
+
 		if (fileNames.empty())
 		{
 			spParentProjectItems = NULL;
@@ -257,6 +259,7 @@ void CGoToComplementary::GetProjectItemChildren(VxDTE::Document* pDocument, std:
 				}
 			}
 		}
+
 		if (fileNames.size() == 1)
 		{
 			LONG lCount = 0;
@@ -278,6 +281,7 @@ void CGoToComplementary::GetProjectItemChildren(VxDTE::Document* pDocument, std:
 						}
 					}
 				}
+
 				if (fileNames.size() == 1)
 				{
 					fileNames.clear();
@@ -351,6 +355,7 @@ void CGoToComplementary::GetProjectFiles(VxDTE::Document* pDocument, std::vector
 
 			WIN32_FIND_DATA FindData;
 			HANDLE hFindFile = FindFirstFile(Search.c_str(), &FindData);
+
 			if (hFindFile != INVALID_HANDLE_VALUE)
 			{
 				do
@@ -370,7 +375,7 @@ void CGoToComplementary::GetProjectFiles(VxDTE::Document* pDocument, std::vector
 								CComPtr<VxDTE::Project> spProject;
 								if (SUCCEEDED(spProjectItem->get_ContainingProject(&spProject)) && spProject)
 								{
-									CComBSTR spFullProjectName = NULL;
+									CComBSTR spFullProjectName;
 									if (SUCCEEDED(spProject->get_FullName(&spFullProjectName)) && spFullProjectName != NULL && *spFullProjectName != L'\0')
 									{
 										CComPtr<VxDTE::ProjectItems> spParentProjectItems;
@@ -394,6 +399,7 @@ void CGoToComplementary::GetProjectFiles(VxDTE::Document* pDocument, std::vector
 						}
 					}
 				} while (FindNextFile(hFindFile, &FindData));
+
 				FindClose(hFindFile);
 			}
 		}
