@@ -20,47 +20,46 @@
 #include "stdafx.h"
 #include "GoToComplementary.h"
 
-namespace
+namespace {
+CComPtr<VxDTE::ProjectItem> FindProjectItem(const CComPtr<VxDTE::ProjectItems>& spParentProjectItems, LPCWSTR lpFileName)
 {
-	CComPtr<VxDTE::ProjectItem> FindProjectItem(const CComPtr<VxDTE::ProjectItems>& spParentProjectItems, LPCWSTR lpFileName)
+	LONG lCount = 0;
+	if (SUCCEEDED(spParentProjectItems->get_Count(&lCount)))
 	{
-		LONG lCount = 0;
-		if (SUCCEEDED(spParentProjectItems->get_Count(&lCount)))
+		for (LONG i = 1; i <= lCount; i++)
 		{
-			for (LONG i = 1; i <= lCount; i++)
+			CComPtr<VxDTE::ProjectItem> spProjectItem;
+			if (SUCCEEDED(spParentProjectItems->Item(CComVariant(i), &spProjectItem)) && spProjectItem)
 			{
-				CComPtr<VxDTE::ProjectItem> spProjectItem;
-				if (SUCCEEDED(spParentProjectItems->Item(CComVariant(i), &spProjectItem)) && spProjectItem)
+				short sCount = 0;
+				if (SUCCEEDED(spProjectItem->get_FileCount(&sCount)))
 				{
-					short sCount = 0;
-					if (SUCCEEDED(spProjectItem->get_FileCount(&sCount)))
+					for (short j = 1; i <= sCount; i++)
 					{
-						for (short j = 1; i <= sCount; i++)
+						CComBSTR spFilePath;
+						if (SUCCEEDED(spProjectItem->get_FileNames(j, &spFilePath)))
 						{
-							CComBSTR spFilePath;
-							if (SUCCEEDED(spProjectItem->get_FileNames(j, &spFilePath)))
+							if (_wcsicmp(spFilePath, lpFileName) == 0)
 							{
-								if (_wcsicmp(spFilePath, lpFileName) == 0)
-								{
-									return spProjectItem;
-								}
+								return spProjectItem;
 							}
 						}
 					}
-					CComPtr<VxDTE::ProjectItems> spProjectItems;
-					if (SUCCEEDED(spProjectItem->get_ProjectItems(&spProjectItems)) && spProjectItems)
+				}
+				CComPtr<VxDTE::ProjectItems> spProjectItems;
+				if (SUCCEEDED(spProjectItem->get_ProjectItems(&spProjectItems)) && spProjectItems)
+				{
+					CComPtr<VxDTE::ProjectItem> spFoundProjectItem = FindProjectItem(spProjectItems, lpFileName);
+					if (spFoundProjectItem)
 					{
-						CComPtr<VxDTE::ProjectItem> spFoundProjectItem = FindProjectItem(spProjectItems, lpFileName);
-						if (spFoundProjectItem)
-						{
-							return spFoundProjectItem;
-						}
+						return spFoundProjectItem;
 					}
 				}
 			}
 		}
-		return CComPtr<VxDTE::ProjectItem>();
 	}
+	return CComPtr<VxDTE::ProjectItem>();
+}
 }
 
 void CGoToComplementary::CacheStrings()

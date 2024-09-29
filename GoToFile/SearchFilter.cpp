@@ -42,8 +42,8 @@ int SFilter::Like(LPCWSTR lpSearch, LPCWSTR m_lpFilter, ESearchField m_eSearchFi
 					int iResult = Like(lpSearch, m_lpFilter, m_eSearchField);
 					if (iResult >= 0)
 					{
-						return lpSearchMatch 
-							? static_cast<int>(lpSearchMatch - lpSearchStart) 
+						return lpSearchMatch
+							? static_cast<int>(lpSearchMatch - lpSearchStart)
 							: static_cast<int>(lpSearch - lpSearchStart) + iResult;
 					}
 					lpSearch++;
@@ -264,83 +264,83 @@ void CreateFilterList(const CComBSTR& spFilter, std::unique_ptr<WCHAR[]>& spFilt
 	for (LPWSTR pChar = spFilterStringTable.get(); bParse; pChar++)
 	{
 		bool bDone = false;
-		switch(*pChar)
+		switch (*pChar)
 		{
-		case L'\0':
-			bParse = false;
-			bDone = true;
-			break;
-		case L'&':
-			if (lpFilter == nullptr && eLogicOperator == LOGIC_OPERATOR_NONE && !bQuoted)
-			{
-				eLogicOperator = LOGIC_OPERATOR_AND;
-				continue;
-			}
-			break;
-		case L'|':
-			if (lpFilter == nullptr && eLogicOperator == LOGIC_OPERATOR_NONE && !bQuoted)
-			{
-				eLogicOperator = LOGIC_OPERATOR_OR;
-				continue;
-			}
-			break;
-		case L'-':
-		case L'!':
-			if (lpFilter == nullptr && !bNot && !bQuoted)
-			{
-				bNot = true;
-				continue;
-			}
-			break;
-		case L'"':
-			if (lpFilter == nullptr && !bQuoted)
-			{
-				bQuoted = true;
-				continue;
-			}
-			else if (bQuoted)
-			{
+			case L'\0':
+				bParse = false;
 				bDone = true;
-			}
-			break;
-		case L'\\':
-		case L'/':
-			if (lpFilter == nullptr && !bQuoted)
-			{
-				if (eSearchField == SEARCH_FIELD_FILE_NAME)
+				break;
+			case L'&':
+				if (lpFilter == nullptr && eLogicOperator == LOGIC_OPERATOR_NONE && !bQuoted)
 				{
-					eSearchField = SEARCH_FIELD_FILE_PATH;
+					eLogicOperator = LOGIC_OPERATOR_AND;
+					continue;
 				}
-				else if (eSearchField == SEARCH_FIELD_PROJECT_NAME)
+				break;
+			case L'|':
+				if (lpFilter == nullptr && eLogicOperator == LOGIC_OPERATOR_NONE && !bQuoted)
 				{
-					eSearchField = SEARCH_FIELD_PROJECT_PATH;
+					eLogicOperator = LOGIC_OPERATOR_OR;
+					continue;
 				}
-				continue;
-			}
-			break;
-		case L':':
-			if (lpFilter == nullptr && !bQuoted)
-			{
-				if (eSearchField == SEARCH_FIELD_FILE_NAME)
+				break;
+			case L'-':
+			case L'!':
+				if (lpFilter == nullptr && !bNot && !bQuoted)
 				{
-					eSearchField = SEARCH_FIELD_PROJECT_NAME;
+					bNot = true;
+					continue;
 				}
-				else if (eSearchField == SEARCH_FIELD_FILE_PATH)
+				break;
+			case L'"':
+				if (lpFilter == nullptr && !bQuoted)
 				{
-					eSearchField = SEARCH_FIELD_PROJECT_PATH;
+					bQuoted = true;
+					continue;
 				}
-				continue;
-			}
-			break;
-		case L' ':
-		case L'\t':
-		case L'\r':
-		case L'\n':
-			if (!bQuoted)
-			{
-				bDone = true;
-			}
-			break;
+				else if (bQuoted)
+				{
+					bDone = true;
+				}
+				break;
+			case L'\\':
+			case L'/':
+				if (lpFilter == nullptr && !bQuoted)
+				{
+					if (eSearchField == SEARCH_FIELD_FILE_NAME)
+					{
+						eSearchField = SEARCH_FIELD_FILE_PATH;
+					}
+					else if (eSearchField == SEARCH_FIELD_PROJECT_NAME)
+					{
+						eSearchField = SEARCH_FIELD_PROJECT_PATH;
+					}
+					continue;
+				}
+				break;
+			case L':':
+				if (lpFilter == nullptr && !bQuoted)
+				{
+					if (eSearchField == SEARCH_FIELD_FILE_NAME)
+					{
+						eSearchField = SEARCH_FIELD_PROJECT_NAME;
+					}
+					else if (eSearchField == SEARCH_FIELD_FILE_PATH)
+					{
+						eSearchField = SEARCH_FIELD_PROJECT_PATH;
+					}
+					continue;
+				}
+				break;
+			case L' ':
+			case L'\t':
+			case L'\r':
+			case L'\n':
+				if (!bQuoted)
+				{
+					bDone = true;
+				}
+				break;
 		}
 
 		if (bDone)

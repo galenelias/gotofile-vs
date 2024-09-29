@@ -189,7 +189,7 @@ void GoToFileSettings::Restore()
 
 	if (!m_project.empty())
 	{
-		CWindow wndProjects= goToFileDlg.GetDlgItem(IDC_PROJECTS);
+		CWindow wndProjects = goToFileDlg.GetDlgItem(IDC_PROJECTS);
 		if (wndProjects)
 		{
 			for (int i = 0; i < CGoToFileDlg::KNOWN_FILTER_COUNT; i++)
@@ -313,15 +313,15 @@ void GoToFileSettings::Write()
 			RegSetValueEx(hRegHive, L"ProjectNameWidth", 0, REG_DWORD, reinterpret_cast<const LPBYTE>(&m_iProjectNameWidth), sizeof(m_iProjectNameWidth));
 			RegSetValueEx(hRegHive, L"ProjectPathWidth", 0, REG_DWORD, reinterpret_cast<const LPBYTE>(&m_iProjectPathWidth), sizeof(m_iProjectPathWidth));
 
-			RegSetValueEx(hRegHive, L"Project", 0, REG_SZ, reinterpret_cast<const BYTE *>(m_project.c_str()), !m_project.empty() ? sizeof(WCHAR) * static_cast<DWORD>(m_project.size() + 1) : 0);
-			RegSetValueEx(hRegHive, L"Filter", 0, REG_SZ, reinterpret_cast<const BYTE *>(m_filter.c_str()), !m_filter.empty() ? sizeof(WCHAR) * static_cast<DWORD>(m_filter.size() + 1) : 0);
-			RegSetValueEx(hRegHive, L"BrowsePath", 0, REG_SZ, reinterpret_cast<const BYTE *>(m_browsePath.c_str()), !m_browsePath.empty() ? sizeof(WCHAR) * static_cast<DWORD>(m_browsePath.size() + 1) : 0);
+			RegSetValueEx(hRegHive, L"Project", 0, REG_SZ, reinterpret_cast<const BYTE*>(m_project.c_str()), !m_project.empty() ? sizeof(WCHAR) * static_cast<DWORD>(m_project.size() + 1) : 0);
+			RegSetValueEx(hRegHive, L"Filter", 0, REG_SZ, reinterpret_cast<const BYTE*>(m_filter.c_str()), !m_filter.empty() ? sizeof(WCHAR) * static_cast<DWORD>(m_filter.size() + 1) : 0);
+			RegSetValueEx(hRegHive, L"BrowsePath", 0, REG_SZ, reinterpret_cast<const BYTE*>(m_browsePath.c_str()), !m_browsePath.empty() ? sizeof(WCHAR) * static_cast<DWORD>(m_browsePath.size() + 1) : 0);
 
 			RegSetValueEx(hRegHive, L"ViewKind", 0, REG_DWORD, reinterpret_cast<const LPBYTE>(&m_eViewKind), sizeof(m_eViewKind));
 			RegSetValueEx(hRegHive, L"LoggingEnabled", 0, REG_DWORD, reinterpret_cast<const LPBYTE>(&m_bLogging), sizeof(m_bLogging));
 
 			if (!m_selectedProjects.empty())
-				RegSetValueEx(hRegHive, L"SelectedProjects", 0, REG_MULTI_SZ, reinterpret_cast<const BYTE *>(m_selectedProjects.c_str()), sizeof(WCHAR) * static_cast<DWORD>(m_selectedProjects.size() + 1));
+				RegSetValueEx(hRegHive, L"SelectedProjects", 0, REG_MULTI_SZ, reinterpret_cast<const BYTE*>(m_selectedProjects.c_str()), sizeof(WCHAR) * static_cast<DWORD>(m_selectedProjects.size() + 1));
 
 			RegCloseKey(hRegHive);
 		}
