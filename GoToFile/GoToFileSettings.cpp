@@ -254,10 +254,23 @@ bool GoToFileSettings::ReadFromKey(LPCWSTR pwzRegKey)
 		return false;
 
 	DWORD uiSize;
-	uiSize = sizeof(m_location);
-	RegQueryValueEx(hRegHive, L"Location", NULL, NULL, reinterpret_cast<LPBYTE>(&m_location), &uiSize);
-	uiSize = sizeof(m_size);
-	RegQueryValueEx(hRegHive, L"Size", NULL, NULL, reinterpret_cast<LPBYTE>(&m_size), &uiSize);
+
+	{
+		POINT location;
+		SIZE size;
+
+		uiSize = sizeof(location);
+		RegQueryValueEx(hRegHive, L"Location", NULL, NULL, reinterpret_cast<LPBYTE>(&location), &uiSize);
+		uiSize = sizeof(size);
+		RegQueryValueEx(hRegHive, L"Size", NULL, NULL, reinterpret_cast<LPBYTE>(&size), &uiSize);
+
+		// Detect if persisted location is off-screen, and ignore it if so
+		HMONITOR hMon = MonitorFromPoint(location, MONITOR_DEFAULTTONULL);
+		if (hMon != NULL)
+			m_location = location;
+
+		m_size = size;
+	}
 
 	uiSize = sizeof(m_iFileNameWidth);
 	RegQueryValueEx(hRegHive, L"FileNameWidth", NULL, NULL, reinterpret_cast<LPBYTE>(&m_iFileNameWidth), &uiSize);
