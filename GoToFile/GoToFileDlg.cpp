@@ -27,17 +27,17 @@
 #include <iterator>
 #include <optional>
 
-static int CALLBACK BrowseCallback(HWND hwnd,UINT uMsg, LPARAM /*lParam*/, LPARAM lpData)
+static int CALLBACK BrowseCallback(HWND hwnd, UINT uMsg, LPARAM /*lParam*/, LPARAM lpData)
 {
 	GoToFileSettings* pSettings = reinterpret_cast<GoToFileSettings*>(lpData);
-	switch(uMsg)
+	switch (uMsg)
 	{
-	case BFFM_INITIALIZED:
-		if (!pSettings->GetBrowsePath().empty())
-		{
-			SendMessage(hwnd, BFFM_SETSELECTION, TRUE, reinterpret_cast<LPARAM>(pSettings->GetBrowsePath().c_str()));
-		}
-		break;
+		case BFFM_INITIALIZED:
+			if (!pSettings->GetBrowsePath().empty())
+			{
+				SendMessage(hwnd, BFFM_SETSELECTION, TRUE, reinterpret_cast<LPARAM>(pSettings->GetBrowsePath().c_str()));
+			}
+			break;
 	}
 	return 0;
 }
@@ -245,22 +245,22 @@ LRESULT CGoToFileDlg::OnGetDispInfoFiles(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*b
 			const SFilteredFile& FilteredFile = m_filteredFiles[pDispInfo->item.iItem];
 			switch (pDispInfo->item.iSubItem)
 			{
-			case 0:
-				wcsncpy_s(pDispInfo->item.pszText, pDispInfo->item.cchTextMax, FilteredFile.pFile->spFilePath.get() + FilteredFile.pFile->uiFileName, pDispInfo->item.cchTextMax);
-				pDispInfo->item.pszText[pDispInfo->item.cchTextMax - 1] = L'\0';
-				break;
-			case 1:
-				wcsncpy_s(pDispInfo->item.pszText, pDispInfo->item.cchTextMax, FilteredFile.pFile->spFilePath.get(), pDispInfo->item.cchTextMax);
-				pDispInfo->item.pszText[pDispInfo->item.cchTextMax - 1] = L'\0';
-				break;
-			case 2:
-				wcsncpy_s(pDispInfo->item.pszText, pDispInfo->item.cchTextMax, FilteredFile.pFile->lpProjectName, pDispInfo->item.cchTextMax);
-				pDispInfo->item.pszText[pDispInfo->item.cchTextMax - 1] = L'\0';
-				break;
-			case 3:
-				wcsncpy_s(pDispInfo->item.pszText, pDispInfo->item.cchTextMax, FilteredFile.pFile->lpProjectPath, pDispInfo->item.cchTextMax);
-				pDispInfo->item.pszText[pDispInfo->item.cchTextMax - 1] = L'\0';
-				break;
+				case 0:
+					wcsncpy_s(pDispInfo->item.pszText, pDispInfo->item.cchTextMax, FilteredFile.pFile->spFilePath.get() + FilteredFile.pFile->uiFileName, pDispInfo->item.cchTextMax);
+					pDispInfo->item.pszText[pDispInfo->item.cchTextMax - 1] = L'\0';
+					break;
+				case 1:
+					wcsncpy_s(pDispInfo->item.pszText, pDispInfo->item.cchTextMax, FilteredFile.pFile->spFilePath.get(), pDispInfo->item.cchTextMax);
+					pDispInfo->item.pszText[pDispInfo->item.cchTextMax - 1] = L'\0';
+					break;
+				case 2:
+					wcsncpy_s(pDispInfo->item.pszText, pDispInfo->item.cchTextMax, FilteredFile.pFile->lpProjectName, pDispInfo->item.cchTextMax);
+					pDispInfo->item.pszText[pDispInfo->item.cchTextMax - 1] = L'\0';
+					break;
+				case 3:
+					wcsncpy_s(pDispInfo->item.pszText, pDispInfo->item.cchTextMax, FilteredFile.pFile->lpProjectPath, pDispInfo->item.cchTextMax);
+					pDispInfo->item.pszText[pDispInfo->item.cchTextMax - 1] = L'\0';
+					break;
 			}
 		}
 	}
@@ -277,14 +277,14 @@ LRESULT CGoToFileDlg::OnGetInfoTipFiles(int /*idCtrl*/, LPNMHDR pNHM, BOOL& /*bH
 			const SFilteredFile& FilteredFile = m_filteredFiles[pInfoTip->iItem];
 			switch (pInfoTip->iSubItem)
 			{
-			case 0:
-				wcsncpy_s(pInfoTip->pszText, pInfoTip->cchTextMax, FilteredFile.pFile->spFilePath.get(), pInfoTip->cchTextMax);
-				pInfoTip->pszText[pInfoTip->cchTextMax - 1] = L'\0';
-				break;
-			case 2:
-				wcsncpy_s(pInfoTip->pszText, pInfoTip->cchTextMax, FilteredFile.pFile->lpProjectPath, pInfoTip->cchTextMax);
-				pInfoTip->pszText[pInfoTip->cchTextMax - 1] = L'\0';
-				break;
+				case 0:
+					wcsncpy_s(pInfoTip->pszText, pInfoTip->cchTextMax, FilteredFile.pFile->spFilePath.get(), pInfoTip->cchTextMax);
+					pInfoTip->pszText[pInfoTip->cchTextMax - 1] = L'\0';
+					break;
+				case 2:
+					wcsncpy_s(pInfoTip->pszText, pInfoTip->cchTextMax, FilteredFile.pFile->lpProjectPath, pInfoTip->cchTextMax);
+					pInfoTip->pszText[pInfoTip->cchTextMax - 1] = L'\0';
+					break;
 			}
 		}
 	}
@@ -419,7 +419,7 @@ void CGoToFileDlg::CreateFileList()
 	{
 		MultiByteToWideChar(CP_ACP, 0, VxDTE::vsProjectItemKindPhysicalFile, -1, s_lpProjectItemKindPhysicalFile, MAX_PATH + 1);
 		s_lpProjectItemKindPhysicalFile[MAX_PATH] = '\0';
-		
+
 		MultiByteToWideChar(CP_ACP, 0, VxDTE::vsProjectItemKindSolutionItems, -1, s_lpProjectItemKindSolutionItemFile, MAX_PATH + 1);
 		s_lpProjectItemKindSolutionItemFile[MAX_PATH] = '\0';
 
@@ -731,7 +731,7 @@ void CGoToFileDlg::RefreshProjectList()
 	COMBOBOXEXITEM Item;
 	memset(&Item, 0, sizeof(COMBOBOXEXITEM));
 	Item.mask = CBEIF_TEXT;
-	
+
 	Item.pszText = const_cast<LPWSTR>(GetKnownFilterName(KNOWN_FILTER_ALL_PROJECTS));
 	Item.cchTextMax = static_cast<int>(wcslen(Item.pszText));
 	::SendMessage(hProjects, CBEM_INSERTITEM, 0, reinterpret_cast<LPARAM>(&Item));
@@ -761,7 +761,7 @@ void CGoToFileDlg::RefreshProjectList()
 	::SendMessage(hProjects, CB_GETDROPPEDCONTROLRECT, 0, reinterpret_cast<LPARAM>(&ProjectDropDownRect));
 	LPARAM iHeight = ::SendMessage(hProjects, CB_GETITEMHEIGHT, -1, 0);
 	long iItems = std::min<long>(static_cast<long>(Item.iItem) + 1, 8);
-	
+
 	::MapWindowPoints(HWND_DESKTOP, *this, reinterpret_cast<LPPOINT>(&ProjectDropDownRect), 2);
 	ProjectDropDownRect.bottom = ProjectDropDownRect.top + (ProjectsRect.bottom - ProjectsRect.top) + iHeight * iItems;
 	::MoveWindow(hProjects, ProjectDropDownRect.left, ProjectDropDownRect.top, ProjectDropDownRect.right - ProjectDropDownRect.left, ProjectDropDownRect.bottom - ProjectDropDownRect.top, FALSE);
@@ -778,20 +778,20 @@ bool CGoToFileDlg::CompareFiles(const SFilteredFile& file1, const SFilteredFile&
 
 	for (int i = 0; i < s_iMaxColumns && iResult == 0; i++)
 	{
-		switch(CGoToFileDlg::s_lpSortColumns[i])
+		switch (CGoToFileDlg::s_lpSortColumns[i])
 		{
-		case 0:
-			iResult = _wcsicmp(file1.pFile->spFilePath.get() + file1.pFile->uiFileName, file2.pFile->spFilePath.get() + file2.pFile->uiFileName);
-			break;
-		case 1:
-			iResult = _wcsicmp(file1.pFile->spFilePath.get(), file2.pFile->spFilePath.get());
-			break;
-		case 2:
-			iResult = _wcsicmp(file1.pFile->lpProjectName, file2.pFile->lpProjectName);
-			break;
-		case 3:
-			iResult = _wcsicmp(file1.pFile->lpProjectPath, file2.pFile->lpProjectPath);
-			break;
+			case 0:
+				iResult = _wcsicmp(file1.pFile->spFilePath.get() + file1.pFile->uiFileName, file2.pFile->spFilePath.get() + file2.pFile->uiFileName);
+				break;
+			case 1:
+				iResult = _wcsicmp(file1.pFile->spFilePath.get(), file2.pFile->spFilePath.get());
+				break;
+			case 2:
+				iResult = _wcsicmp(file1.pFile->lpProjectName, file2.pFile->lpProjectName);
+				break;
+			case 3:
+				iResult = _wcsicmp(file1.pFile->lpProjectPath, file2.pFile->lpProjectPath);
+				break;
 		}
 	}
 
@@ -1063,23 +1063,23 @@ bool CGoToFileDlg::OpenSelectedFiles()
 
 	const EViewKind eViewKind = Button_GetCheck(GetDlgItem(IDC_VIEWCODE)) ? VIEW_KIND_CODE : VIEW_KIND_PRIMARY;
 	WCHAR lpViewKind[MAX_PATH + 1];
-	switch(eViewKind)
+	switch (eViewKind)
 	{
-	case VIEW_KIND_CODE:
-		MultiByteToWideChar(CP_ACP, 0, VxDTE::vsViewKindCode, -1, lpViewKind, MAX_PATH + 1);
-		break;
-	case VIEW_KIND_DESIGNER:
-		MultiByteToWideChar(CP_ACP, 0, VxDTE::vsViewKindDesigner, -1, lpViewKind, MAX_PATH + 1);
-		break;
-	case VIEW_KIND_TEXTVIEW:
-		MultiByteToWideChar(CP_ACP, 0, VxDTE::vsViewKindTextView, -1, lpViewKind, MAX_PATH + 1);
-		break;
-	case VIEW_KIND_DEBUGGING:
-		MultiByteToWideChar(CP_ACP, 0, VxDTE::vsViewKindDebugging, -1, lpViewKind, MAX_PATH + 1);
-		break;
-	default:
-		MultiByteToWideChar(CP_ACP, 0, VxDTE::vsViewKindPrimary, -1, lpViewKind, MAX_PATH + 1);
-		break;
+		case VIEW_KIND_CODE:
+			MultiByteToWideChar(CP_ACP, 0, VxDTE::vsViewKindCode, -1, lpViewKind, MAX_PATH + 1);
+			break;
+		case VIEW_KIND_DESIGNER:
+			MultiByteToWideChar(CP_ACP, 0, VxDTE::vsViewKindDesigner, -1, lpViewKind, MAX_PATH + 1);
+			break;
+		case VIEW_KIND_TEXTVIEW:
+			MultiByteToWideChar(CP_ACP, 0, VxDTE::vsViewKindTextView, -1, lpViewKind, MAX_PATH + 1);
+			break;
+		case VIEW_KIND_DEBUGGING:
+			MultiByteToWideChar(CP_ACP, 0, VxDTE::vsViewKindDebugging, -1, lpViewKind, MAX_PATH + 1);
+			break;
+		default:
+			MultiByteToWideChar(CP_ACP, 0, VxDTE::vsViewKindPrimary, -1, lpViewKind, MAX_PATH + 1);
+			break;
 	}
 	lpViewKind[MAX_PATH] = '\0';
 
@@ -1109,7 +1109,7 @@ bool CGoToFileDlg::OpenSelectedFiles()
 
 							CComPtr<VxDTE::TextSelection> spSelection;
 							spDocument->get_Selection(reinterpret_cast<IDispatch**>(&spSelection));
-							
+
 							const int columnDestination = (m_fileColumnDestination != -1) ? m_fileColumnDestination : 1;
 							spSelection->MoveToLineAndOffset(m_fileLineDestination, columnDestination);
 						}
@@ -1132,14 +1132,14 @@ LRESULT CALLBACK CGoToFileDlg::FilterProc(HWND hWnd, UINT uMsg, WPARAM wParam, L
 	{
 		if (uMsg == WM_KEYDOWN)
 		{
-			switch(wParam)
+			switch (wParam)
 			{
-			case VK_DOWN:
-			case VK_UP:
-			case VK_NEXT:
-			case VK_PRIOR:
-				SendMessage(pWndProc->goToFileDlg.GetDlgItem(IDC_FILES), uMsg, wParam, lParam);
-				return 0;
+				case VK_DOWN:
+				case VK_UP:
+				case VK_NEXT:
+				case VK_PRIOR:
+					SendMessage(pWndProc->goToFileDlg.GetDlgItem(IDC_FILES), uMsg, wParam, lParam);
+					return 0;
 			}
 		}
 		return CallWindowProc(pWndProc->pWndProc, hWnd, uMsg, wParam, lParam);
