@@ -1,0 +1,36 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.configuration }} x64
+    # windows-2022 ships VS 2022 with the v143 toolset and the VS extension development workload
+    runs-on: windows-2022
+    strategy:
+      fail-fast: false
+      matrix:
+        configuration: [Debug, Release]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: microsoft/setup-msbuild@30375c66a4eea26614e0d39710365f22f8b0af57 # v3
+
+      # Warning level 4 and warnings-as-errors are set in the project files, so any new warning fails the build
+      - name: Build solution
+        run: msbuild GoToFile.sln /m /restore /p:Configuration=${{ matrix.configuration }} /p:Platform=x64
+
+      - name: Upload VSIX
+        if: matrix.configuration == 'Release'
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: FastGoToFile-vsix
+          path: GoToFile/GoToFileVSIX/bin/x64/Release/*.vsix
+          if-no-files-found: error
