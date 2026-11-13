@@ -1256,29 +1256,29 @@ LRESULT CGoToFileDlg::OnClickUsage(int /*idCtrl*/, LPNMHDR pNHM, BOOL& bHandled)
 
 void CGoToFileDlg::InitializeLogFile()
 {
-	static CHAR s_szLogFilePath[MAX_PATH];
-	static bool s_initializedLogFilePath = false;
+	static std::wstring s_wstLogFilePath;
 
-	if (!s_initializedLogFilePath)
+	if (s_wstLogFilePath.empty())
 	{
-		WCHAR wzLogFilePath[MAX_PATH];
 		PWSTR pwzAppDataPath = nullptr;
-		SHGetKnownFolderPath(FOLDERID_LocalAppData, 0 /*dwFlags*/, NULL /*hToken*/, &pwzAppDataPath);
+		const HRESULT hr = SHGetKnownFolderPath(FOLDERID_LocalAppData, 0 /*dwFlags*/, NULL /*hToken*/, &pwzAppDataPath);
+		if (FAILED(hr) || pwzAppDataPath == nullptr)
+		{
+			CoTaskMemFree(pwzAppDataPath);
+			return; // Leave logging disabled rather than dereferencing a null path
+		}
 
-		wcscpy_s(wzLogFilePath, _countof(wzLogFilePath), pwzAppDataPath);
-		wcscat_s(wzLogFilePath, _countof(wzLogFilePath), L"\\GoToFile");
+		std::wstring wstLogDirectory = std::wstring(pwzAppDataPath) + L"\\GoToFile";
 		CoTaskMemFree(pwzAppDataPath);
 
 		// Ensure our directory exists
-		CreateDirectory(wzLogFilePath, nullptr /*lpSecurityAttributes*/);
+		CreateDirectory(wstLogDirectory.c_str(), nullptr /*lpSecurityAttributes*/);
 
-		wcscat_s(wzLogFilePath, _countof(wzLogFilePath), L"\\GoToFile.log");
-
-		WideCharToMultiByte(CP_ACP, 0, wzLogFilePath, -1, s_szLogFilePath, _countof(s_szLogFilePath), NULL /*lpDefaultChar*/, NULL /*lpUsedDefaultChar*/);
-		s_initializedLogFilePath = true;
+		s_wstLogFilePath = wstLogDirectory + L"\\GoToFile.log";
 	}
 
-	m_logfile.open(s_szLogFilePath, std::ofstream::out | std::ofstream::app);
+	// Open with the wide path directly; converting to the ANSI code page is lossy for non-ANSI profile paths
+	m_logfile.open(s_wstLogFilePath.c_str(), std::ofstream::out | std::ofstream::app);
 }
 
 
