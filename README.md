@@ -4,7 +4,7 @@ Visual Studio extension for quickly jumping to a file in the solution
 This is a fork of the [Open Now!](https://marketplace.visualstudio.com/items?itemName=Nem.OpenNow) Visual Studio extension by Ryan Gregg.  Open Now! stopped working with Visual Studio 2019, and isn't very actively maintained, so I decided to make my own copy so I could start making tweaks and improvements.
 
 So far, the changes from Open Now! are:
-* Works with Visual Studio 2019
+* Works with Visual Studio 2022 (earlier releases supported Visual Studio 2019)
 * Fixed many significant memory leaks
 * Made numerous performance fixes
 
@@ -25,7 +25,7 @@ There are a number of special characters that can prefix search terms. You can s
 
 The ampersand (&) specifies that the search string should be combined with a logical "and". (Note, this is the default implicit behavior - you probably wont even need to type an ampersand).
 The vertical bar (|) specifies that the search string should be combined with a logical "or".
-The hyphon (-) and apostrophe (!) specify that the search string should be negated.
+The hyphen (-) and exclamation mark (!) specify that the search string should be negated.
 The backward slash (\) or forward slash (/) specify that the whole file or project path should be searched, not just the file or project name.
 The colon (:) specifies that the project or project path should be searched and not the file name or file path.
 The double quote (") can be used to surround the above special characters (or spaces) to effectively "escape" them.
@@ -37,6 +37,7 @@ The question mark (?) can be used as a single character wildcard.
 | Example | Description |
 | ------- | ----------- |
 | substring.cpp(row[,col])	| Opens the selected file navigating to row/col. Useful for opening based on build break output
+| substring.cpp:row[:col]	| Same as above, using the colon-separated form emitted by many compilers and tools (e.g. `foo.cpp:32:10`)
 | substring .h	| Find all files containing substring in all .h files.
 | substring &#124;.cpp &#124;.h | Find all files containing substring in all .cpp and .h files.
 | substring -.h	| Find all files containing substring in all files except .h files.
