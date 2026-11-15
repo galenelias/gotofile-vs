@@ -48,6 +48,49 @@ The question mark (?) can be used as a single character wildcard.
 | substring *.h | Find all files containing substring in all files ending in .h.
 
 
+## Building from Source
+
+### Prerequisites
+
+* Windows 10 or later (x64).
+* Visual Studio 2022 with these workloads:
+  * **Desktop development with C++**, including the v143 toolset and a Windows 10/11 SDK.
+  * **Visual Studio extension development**, which installs the VS SDK.
+
+The C++ project finds the VS SDK headers and libraries through `VsSDK.props`, which points at `$(VSInstallDir)\VSSDK\VisualStudioIntegration`. If the extension development workload is missing, the build fails on missing headers such as `VSLPackage.h`.
+
+### Solution layout
+
+| Project | Purpose |
+| ------- | ------- |
+| `GoToFile` | The native VS package (the dialog, search logic and settings). |
+| `GoToFileUI` | Satellite resource DLL with the command table (`PackageCommands.vsct`) and images. |
+| `GoToFileVSIX` | Packages both DLLs into the `.vsix`, and launches the experimental instance for debugging. |
+
+### Build
+
+Open `GoToFile.sln` in Visual Studio 2022, select the **x64** platform, and build. Or, from a Developer Command Prompt:
+
+```
+msbuild GoToFile.sln /m /restore /p:Configuration=Release /p:Platform=x64
+```
+
+Warnings are treated as errors (warning level 4), so the build must stay warning-free. CI runs the same command on every pull request.
+
+### Debug
+
+1. Set **GoToFileVSIX** as the startup project. The solution's default startup project is `GoToFile`, which can't be launched on its own.
+2. Press F5. This starts `devenv.exe /rootsuffix Exp`, a separate *experimental instance* of Visual Studio with its own settings and extensions, and deploys the freshly built extension into it. Native debugging is enabled, so breakpoints in the C++ code work.
+3. In the experimental instance, open any solution and use **Tools > Fast Go To File...** (Ctrl+Shift+Alt+O).
+
+To reset the experimental instance, run **Reset the Visual Studio 2022 Experimental Instance** from the Start menu.
+
+### Package and install
+
+A build writes the extension package (`.vsix`) to `GoToFile\GoToFileVSIX\bin\x64\<Configuration>\`. Double-click it, or run `VSIXInstaller.exe` on it, to install it into your regular Visual Studio. Close Visual Studio first. The package version comes from `GoToFile\GoToFileVSIX\source.extension.vsixmanifest`.
+
+CI also uploads the Release `.vsix` as the `FastGoToFile-vsix` artifact on each run.
+
 ## FAQ
 
 #### I've installed FastGoToFile, where can I find it?
