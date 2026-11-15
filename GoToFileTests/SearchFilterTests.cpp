@@ -174,6 +174,79 @@ public:
 		AssertFilter(parsed.filters[0], L"-foo", SEARCH_FIELD_FILE_NAME, LOGIC_OPERATOR_AND);
 	}
 
+	TEST_METHOD(EmptyQuotesProduceNoFilter)
+	{
+		AssertFilterCount(Parse(L"\"\""), 0);
+		AssertFilterCount(Parse(L"- \"\" :"), 0);
+	}
+
+	TEST_METHOD(UnterminatedQuoteRunsToEnd)
+	{
+		ParsedFilter parsed = Parse(L"\"a b");
+		AssertFilterCount(parsed, 1);
+		AssertFilter(parsed.filters[0], L"a b", SEARCH_FIELD_FILE_NAME, LOGIC_OPERATOR_AND);
+	}
+
+	TEST_METHOD(ClosingQuoteEndsTerm)
+	{
+		ParsedFilter parsed = Parse(L"\"foo\"bar");
+		AssertFilterCount(parsed, 2);
+		AssertFilter(parsed.filters[0], L"foo", SEARCH_FIELD_FILE_NAME, LOGIC_OPERATOR_AND);
+		AssertFilter(parsed.filters[1], L"bar", SEARCH_FIELD_FILE_NAME, LOGIC_OPERATOR_AND);
+	}
+
+	TEST_METHOD(QuoteInsideTermIsLiteral)
+	{
+		ParsedFilter parsed = Parse(L"a\"b");
+		AssertFilterCount(parsed, 1);
+		AssertFilter(parsed.filters[0], L"a\"b", SEARCH_FIELD_FILE_NAME, LOGIC_OPERATOR_AND);
+	}
+
+	TEST_METHOD(ModifiersApplyBeforeQuote)
+	{
+		ParsedFilter parsed = Parse(L"|-:\"a b\"");
+		AssertFilterCount(parsed, 1);
+		AssertFilter(parsed.filters[0], L"a b", SEARCH_FIELD_PROJECT_NAME, LOGIC_OPERATOR_OR_NOT);
+	}
+
+	TEST_METHOD(SecondNegationStartsTerm)
+	{
+		ParsedFilter parsed = Parse(L"--foo");
+		AssertFilterCount(parsed, 1);
+		AssertFilter(parsed.filters[0], L"-foo", SEARCH_FIELD_FILE_NAME, LOGIC_OPERATOR_AND_NOT);
+	}
+
+	TEST_METHOD(SecondLogicOperatorStartsTerm)
+	{
+		ParsedFilter parsed = Parse(L"&|foo");
+		AssertFilterCount(parsed, 1);
+		AssertFilter(parsed.filters[0], L"|foo", SEARCH_FIELD_FILE_NAME, LOGIC_OPERATOR_AND);
+	}
+
+	TEST_METHOD(RepeatedFieldPrefixesAreAbsorbed)
+	{
+		ParsedFilter parsed = Parse(L"::foo //bar :\\:\\baz");
+		AssertFilterCount(parsed, 3);
+		AssertFilter(parsed.filters[0], L"foo", SEARCH_FIELD_PROJECT_NAME, LOGIC_OPERATOR_AND);
+		AssertFilter(parsed.filters[1], L"bar", SEARCH_FIELD_FILE_PATH, LOGIC_OPERATOR_AND);
+		AssertFilter(parsed.filters[2], L"baz", SEARCH_FIELD_PROJECT_PATH, LOGIC_OPERATOR_AND);
+	}
+
+	TEST_METHOD(SpecialCharactersInsideTermAreLiteral)
+	{
+		ParsedFilter parsed = Parse(L"a&b|c-d!e\\f/g");
+		AssertFilterCount(parsed, 1);
+		AssertFilter(parsed.filters[0], L"a&b|c-d!e\\f/g", SEARCH_FIELD_FILE_NAME, LOGIC_OPERATOR_AND);
+	}
+
+	TEST_METHOD(QuotedLineNumber)
+	{
+		ParsedFilter parsed = Parse(L"\"foo.cpp:3\"");
+		AssertFilterCount(parsed, 1);
+		AssertFilter(parsed.filters[0], L"foo.cpp", SEARCH_FIELD_FILE_NAME, LOGIC_OPERATOR_AND);
+		Assert::AreEqual(3, parsed.line);
+	}
+
 	// README: "substring *.h"
 	TEST_METHOD(WildcardsAreKept)
 	{
