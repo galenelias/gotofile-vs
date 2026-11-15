@@ -27,6 +27,13 @@ jobs:
       - name: Build solution
         run: msbuild GoToFile.sln /m /restore /p:Configuration=${{ matrix.configuration }} /p:Platform=x64
 
+      - name: Run unit tests
+        shell: pwsh
+        run: |
+          $vs = & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" -latest -property installationPath
+          & "$vs\Common7\IDE\Extensions\TestPlatform\vstest.console.exe" "x64\${{ matrix.configuration }}\GoToFileTests.dll" /Platform:x64
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Upload VSIX
         if: matrix.configuration == 'Release'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

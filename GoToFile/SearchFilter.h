@@ -1,6 +1,16 @@
 #pragma once
 
-#include "stdafx.h"
+// Self-contained (no stdafx.h) so the unit tests can compile the search logic without the VS SDK
+#ifndef NOMINMAX
+#define NOMINMAX
+#endif
+#include <windows.h>
+
+#include <algorithm>
+#include <cstdint>
+#include <cwctype>
+#include <memory>
+#include <vector>
 
 #include "CharBag.h"
 
@@ -122,5 +132,5 @@ private:
 };
 
 
-void CreateFilterList(const CComBSTR& spFilter, std::unique_ptr<WCHAR[]>& spFilterStringTable, std::vector<SFilter>& Filters, _Inout_ int* destinationLine, _Inout_ int* destinationColumn);
+void CreateFilterList(LPCWSTR pwzFilter, std::unique_ptr<WCHAR[]>& spFilterStringTable, std::vector<SFilter>& Filters, _Inout_ int* destinationLine, _Inout_ int* destinationColumn);
 

@@ -1,8 +1,11 @@
-#include "StdAfx.h"
-
 #include "SearchFilter.h"
 
+#include <cctype>
+#include <cstdlib>
+#include <cwchar>
 #include <optional>
+#include <string_view>
+#include <tuple>
 
 
 WCHAR SFilter::Normalize(WCHAR cChar, ESearchField m_eSearchField)
@@ -248,11 +251,14 @@ static void TryParseLineAndColumns(LPWSTR lpStart, LPCWSTR lpEnd, _Inout_ int* p
 }
 
 
-void CreateFilterList(const CComBSTR& spFilter, std::unique_ptr<WCHAR[]>& spFilterStringTable, std::vector<SFilter>& filters, _Inout_ int* pDestinationLine, _Inout_ int* pDestinationColumn)
+void CreateFilterList(LPCWSTR pwzFilter, std::unique_ptr<WCHAR[]>& spFilterStringTable, std::vector<SFilter>& filters, _Inout_ int* pDestinationLine, _Inout_ int* pDestinationColumn)
 {
-	const size_t cchFilter = spFilter.Length() + 1;
+	if (pwzFilter == nullptr)
+		pwzFilter = L"";
+
+	const size_t cchFilter = wcslen(pwzFilter) + 1;
 	spFilterStringTable = std::make_unique<WCHAR[]>(cchFilter);
-	wcscpy_s(spFilterStringTable.get(), cchFilter, spFilter);
+	wcscpy_s(spFilterStringTable.get(), cchFilter, pwzFilter);
 
 	LPWSTR lpFilter = nullptr;
 	ESearchField eSearchField = SEARCH_FIELD_FILE_NAME;
