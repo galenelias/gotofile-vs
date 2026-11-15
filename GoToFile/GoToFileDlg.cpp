@@ -627,7 +627,11 @@ void CGoToFileDlg::CreateBrowseFileList(LPCWSTR lpPath)
 					wcscat_s(spFileName.get(), cchFileName, findData.cFileName);
 					if ((findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) != 0)
 					{
-						CreateBrowseFileList(spFileName.get());
+						// Don't follow directory symlinks or junctions: they can point back at an ancestor and recurse without bound.
+						// Other reparse points (e.g. cloud placeholder folders) are real directories and are still walked.
+						const bool bNameSurrogate = (findData.dwFileAttributes & FILE_ATTRIBUTE_REPARSE_POINT) != 0 && IsReparseTagNameSurrogate(findData.dwReserved0);
+						if (!bNameSurrogate)
+							CreateBrowseFileList(spFileName.get());
 					}
 					else
 					{
