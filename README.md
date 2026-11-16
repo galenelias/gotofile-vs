@@ -4,7 +4,7 @@ Visual Studio extension for quickly jumping to a file in the solution
 This is a fork of the [Open Now!](https://marketplace.visualstudio.com/items?itemName=Nem.OpenNow) Visual Studio extension by Ryan Gregg.  Open Now! stopped working with Visual Studio 2019, and isn't very actively maintained, so I decided to make my own copy so I could start making tweaks and improvements.
 
 So far, the changes from Open Now! are:
-* Works with Visual Studio 2022 (earlier releases supported Visual Studio 2019)
+* Works with Visual Studio 2022 and 2026 (earlier releases supported Visual Studio 2019)
 * Fixed many significant memory leaks
 * Made numerous performance fixes
 
