@@ -39,6 +39,24 @@ static std::wstring ReadWstringFromRegistry(HKEY hRegHive, LPCWSTR pwzName)
 	return result;
 }
 
+// 100% scaling
+static const int c_iDefaultDpi = 96;
+
+// Smallest dialog size we'll restore, in 96-DPI units, so a bad persisted value can't collapse the window
+static const LONG c_iMinWidth = 300;
+static const LONG c_iMinHeight = 200;
+
+// GetDpiForWindow needs Windows 10 1607, newer than our _WIN32_WINNT, so look it up at runtime
+static UINT GetWindowDpi(HWND hWnd)
+{
+	using PFNGetDpiForWindow = UINT(WINAPI*)(HWND);
+	static const PFNGetDpiForWindow pfnGetDpiForWindow =
+		reinterpret_cast<PFNGetDpiForWindow>(::GetProcAddress(::GetModuleHandleW(L"user32.dll"), "GetDpiForWindow"));
+
+	const UINT uiDpi = pfnGetDpiForWindow ? pfnGetDpiForWindow(hWnd) : 0;
+	return uiDpi != 0 ? uiDpi : static_cast<UINT>(c_iDefaultDpi);
+}
+
 void GoToFileSettings::Store()
 {
 	const LONG iDesktopWidth = static_cast<LONG>(GetSystemMetrics(SM_CXMAXTRACK));
@@ -60,6 +78,11 @@ void GoToFileSettings::Store()
 
 		m_size.cx = std::min(m_size.cx, iDesktopWidth);
 		m_size.cy = std::min(m_size.cy, iDesktopHeight);
+
+		// Persist the size in DPI-independent units so it survives moving between monitors with different scaling
+		const int iDpi = static_cast<int>(GetWindowDpi(goToFileDlg));
+		m_size.cx = MulDiv(m_size.cx, c_iDefaultDpi, iDpi);
+		m_size.cy = MulDiv(m_size.cy, c_iDefaultDpi, iDpi);
 	}
 
 	CWindow wndFiles = goToFileDlg.GetDlgItem(IDC_FILES);
@@ -158,12 +181,14 @@ void GoToFileSettings::Restore()
 {
 	m_bRestoring = true;
 
-	RECT rect;
-	rect.left = m_location.x;
-	rect.top = m_location.y;
-	rect.right = rect.left + m_size.cx;
-	rect.bottom = rect.top + m_size.cy;
-	goToFileDlg.MoveWindow(&rect);
+	// Move first, then size. If the saved location is on a monitor with a different DPI, Windows rescales the
+	// dialog as it crosses over; applying the size afterwards, in the destination monitor's DPI, keeps it stable.
+	goToFileDlg.SetWindowPos(NULL, m_location.x, m_location.y, 0, 0, SWP_NOSIZE | SWP_NOZORDER | SWP_NOACTIVATE);
+
+	const int iDpi = static_cast<int>(GetWindowDpi(goToFileDlg));
+	const LONG iWidth = MulDiv(std::max(m_size.cx, c_iMinWidth), iDpi, c_iDefaultDpi);
+	const LONG iHeight = MulDiv(std::max(m_size.cy, c_iMinHeight), iDpi, c_iDefaultDpi);
+	goToFileDlg.SetWindowPos(NULL, 0, 0, iWidth, iHeight, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
 
 	CWindow wndFiles = goToFileDlg.GetDlgItem(IDC_FILES);
 	if (wndFiles)
