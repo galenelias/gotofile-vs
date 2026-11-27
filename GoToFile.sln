@@ -12,6 +12,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GoToFileUI", "GoToFileUi\Go
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GoToFileVSIX", "GoToFile\GoToFileVSIX\GoToFileVSIX.csproj", "{BD72EDB3-9E0F-4F83-B44C-894032C294FD}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "GoToFileTests", "GoToFileTests\GoToFileTests.vcxproj", "{98948BD6-9547-47EC-80F1-75D1D3E7890B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -54,6 +56,14 @@ Global
 		{BD72EDB3-9E0F-4F83-B44C-894032C294FD}.Release|x64.Build.0 = Release|x64
 		{BD72EDB3-9E0F-4F83-B44C-894032C294FD}.Release|x86.ActiveCfg = Release|Any CPU
 		{BD72EDB3-9E0F-4F83-B44C-894032C294FD}.Release|x86.Build.0 = Release|Any CPU
+		{98948BD6-9547-47EC-80F1-75D1D3E7890B}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{98948BD6-9547-47EC-80F1-75D1D3E7890B}.Debug|x64.ActiveCfg = Debug|x64
+		{98948BD6-9547-47EC-80F1-75D1D3E7890B}.Debug|x64.Build.0 = Debug|x64
+		{98948BD6-9547-47EC-80F1-75D1D3E7890B}.Debug|x86.ActiveCfg = Debug|x64
+		{98948BD6-9547-47EC-80F1-75D1D3E7890B}.Release|Any CPU.ActiveCfg = Release|x64
+		{98948BD6-9547-47EC-80F1-75D1D3E7890B}.Release|x64.ActiveCfg = Release|x64
+		{98948BD6-9547-47EC-80F1-75D1D3E7890B}.Release|x64.Build.0 = Release|x64
+		{98948BD6-9547-47EC-80F1-75D1D3E7890B}.Release|x86.ActiveCfg = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
